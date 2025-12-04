@@ -23,14 +23,18 @@ function App() {
     damEnabled: false,
     damBlockTime: 5,
     damOpenTime: 2,
+    priorityMode: "FIFO",
+    maxDuration: 60,
     speed: 1
   });
 
   const engineRef = useRef(null);
   const [stats, setStats] = useState(null);
   const [paused, setPaused] = useState(false);
+  const [finished, setFinished] = useState(false);
   const requestRef = useRef();
   const lastTimeRef = useRef(Date.now());
+  const lastStatsUpdate = useRef(0);
 
   // Reinitialize engine when critical config changes
   useEffect(() => {
@@ -58,7 +62,14 @@ function App() {
 
     if (engineRef.current) {
       engineRef.current.update(dt);
-      setStats({ ...engineRef.current.stats, variance: engineRef.current.getVariance() });
+
+      // Throttle stats updates to reduce lag (every 100ms)
+      if (now - lastStatsUpdate.current > 100) {
+        setStats({ ...engineRef.current.stats, variance: engineRef.current.getVariance() });
+        setFinished(engineRef.current.finished);
+        setPaused(engineRef.current.paused);
+        lastStatsUpdate.current = now;
+      }
     }
     requestRef.current = requestAnimationFrame(animate);
   };
@@ -72,6 +83,8 @@ function App() {
     if (engineRef.current) {
       engineRef.current.reset();
       setStats({ ...engineRef.current.stats });
+      setFinished(false);
+      setPaused(false);
     }
   };
 
@@ -79,6 +92,24 @@ function App() {
     if (engineRef.current) {
       engineRef.current.togglePause();
       setPaused(engineRef.current.paused);
+    }
+  };
+
+  const handleStop = () => {
+    if (engineRef.current) {
+      engineRef.current.finished = true;
+      engineRef.current.paused = true;
+      setFinished(true);
+      setPaused(true);
+    }
+  };
+
+  const handleFastForward = () => {
+    if (engineRef.current && !finished) {
+      engineRef.current.runToCompletion();
+      setStats({ ...engineRef.current.stats, variance: engineRef.current.getVariance() });
+      setFinished(true);
+      setPaused(true);
     }
   };
 
@@ -96,12 +127,34 @@ function App() {
 
           {/* Playback Controls */}
           <div className="bg-slate-50 rounded-lg p-4 mb-6 border border-slate-200">
-            <div className="flex gap-2 mb-4">
+            {finished && (
+              <div className="bg-green-100 border border-green-300 text-green-800 px-3 py-2 rounded-lg text-sm font-medium mb-4 text-center">
+                ✓ Simulation terminée
+              </div>
+            )}
+            <div className="flex gap-2 mb-2">
               <button
                 onClick={handleTogglePause}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-4 rounded-lg font-medium transition-colors text-sm"
+                disabled={finished}
+                className={`flex-1 py-2.5 px-4 rounded-lg font-medium transition-colors text-sm text-white ${finished ? 'bg-slate-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
               >
                 {paused ? 'Play' : 'Pause'}
+              </button>
+              <button
+                onClick={handleStop}
+                disabled={finished}
+                className={`flex-1 py-2.5 px-4 rounded-lg font-medium transition-colors text-sm text-white ${finished ? 'bg-slate-400 cursor-not-allowed' : 'bg-orange-600 hover:bg-orange-700'}`}
+              >
+                Stop
+              </button>
+            </div>
+            <div className="flex gap-2 mb-4">
+              <button
+                onClick={handleFastForward}
+                disabled={finished}
+                className={`flex-1 py-2.5 px-4 rounded-lg font-medium transition-colors text-sm text-white ${finished ? 'bg-slate-400 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700'}`}
+              >
+                ⚡ Simulation Rapide
               </button>
               <button
                 onClick={handleReset}
@@ -110,12 +163,24 @@ function App() {
                 Reset
               </button>
             </div>
+            <div className="mb-3">
+              <label className="text-slate-700 text-sm font-medium mb-2 block">Durée Max (s)</label>
+              <input
+                type="number"
+                min="10"
+                max="600"
+                value={config.maxDuration}
+                onChange={(e) => setConfig(prev => ({ ...prev, maxDuration: parseInt(e.target.value) || 60 }))}
+                className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              />
+              <div className="text-slate-500 text-xs mt-1">La simulation s'arrête automatiquement après cette durée</div>
+            </div>
             <div>
-              <label className="text-slate-700 text-sm font-medium mb-2 block">Speed</label>
+              <label className="text-slate-700 text-sm font-medium mb-2 block">Vitesse</label>
               <input
                 type="range"
                 min="0.5"
-                max="3"
+                max="5"
                 step="0.5"
                 value={config.speed}
                 onChange={(e) => setConfig(prev => ({ ...prev, speed: parseFloat(e.target.value) }))}

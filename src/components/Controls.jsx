@@ -190,6 +190,33 @@ const Controls = ({ config, setConfig }) => {
                             </>
                         )}
                     </Section>
+
+                    <Section title="Scheduling Strategy">
+                        <select
+                            value={config.priorityMode}
+                            onChange={(e) => handleChange('priorityMode', e.target.value)}
+                            className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                        >
+                            <option value="FIFO">FIFO (First In, First Out)</option>
+                            <option value="ING_FIRST">Priority: ING First</option>
+                            <option value="PREPA_FIRST">Priority: PREPA First</option>
+                            <option value="SJF">Shortest Job First</option>
+                        </select>
+                        <p className="text-xs text-slate-500 mt-2">
+                            SJF minimizes average wait time by prioritizing shorter jobs (ING).
+                        </p>
+                    </Section>
+
+                    <Section title="Result Processing">
+                        <Slider
+                            label="Result Time (s)"
+                            value={config.avgResultTime}
+                            min={0.1}
+                            max={5}
+                            step={0.1}
+                            onChange={(v) => handleChange('avgResultTime', v)}
+                        />
+                    </Section>
                 </>
             )}
         </div>

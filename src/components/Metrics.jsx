@@ -5,7 +5,14 @@ const Metrics = ({ stats, config }) => {
 
     const avgWait = stats.completed > 0 ? (stats.totalWaitTime / stats.completed / 1000).toFixed(2) : 0;
     const variance = stats.variance ? (stats.variance / 1000000).toFixed(2) : 0;
-    const rejectRate = ((stats.rejected / (stats.completed + stats.rejected)) * 100).toFixed(1);
+    const stdDev = stats.variance ? Math.sqrt(stats.variance / 1000000).toFixed(2) : 0;
+    const totalAttempts = stats.completed + stats.rejected;
+    const rejectRate = totalAttempts > 0 ? ((stats.rejected / totalAttempts) * 100).toFixed(1) : 0;
+    const execRejectRate = totalAttempts > 0 ? ((stats.rejectedExec / totalAttempts) * 100).toFixed(1) : 0;
+    const resultRejectRate = totalAttempts > 0 ? ((stats.rejectedResult / totalAttempts) * 100).toFixed(1) : 0;
+    const backupEfficiency = stats.savedByBackup + stats.blankPages > 0
+        ? ((stats.savedByBackup / (stats.savedByBackup + stats.blankPages)) * 100).toFixed(1)
+        : 0;
 
     return (
         <div className="space-y-4">
@@ -19,16 +26,19 @@ const Metrics = ({ stats, config }) => {
                 <MetricCard
                     label="Rejected (Exec)"
                     value={stats.rejectedExec}
+                    subValue={`${execRejectRate}%`}
                     color="red"
                 />
                 <MetricCard
                     label="Rejected (Result)"
                     value={stats.rejectedResult}
+                    subValue={`${resultRejectRate}%`}
                     color="orange"
                 />
                 <MetricCard
                     label="Avg Wait Time (s)"
                     value={avgWait}
+                    subValue={`σ = ${stdDev}s`}
                     color="blue"
                 />
                 <MetricCard
@@ -38,6 +48,32 @@ const Metrics = ({ stats, config }) => {
                 />
             </div>
 
+            {/* Backup and Rejection Analysis */}
+            {(config.backupProb > 0 || stats.blankPages > 0 || stats.savedByBackup > 0) && (
+                <div className="grid grid-cols-4 gap-4">
+                    <MetricCard
+                        label="Saved by Backup"
+                        value={stats.savedByBackup}
+                        color="green"
+                    />
+                    <MetricCard
+                        label="Blank Pages"
+                        value={stats.blankPages}
+                        color="orange"
+                    />
+                    <MetricCard
+                        label="Backup Efficiency"
+                        value={`${backupEfficiency}%`}
+                        color="blue"
+                    />
+                    <MetricCard
+                        label="Total Reject Rate"
+                        value={`${rejectRate}%`}
+                        color="red"
+                    />
+                </div>
+            )}
+
             {/* Per-Population Stats */}
             {config.scenario === "Channels" && stats.popStats && (
                 <div className="bg-white rounded-lg p-4 border border-slate-200 shadow-sm">
@@ -45,6 +81,9 @@ const Metrics = ({ stats, config }) => {
                     <div className="grid grid-cols-2 gap-4">
                         {Object.entries(stats.popStats).map(([pop, data]) => {
                             const avgWaitPop = data.completed > 0 ? (data.totalWaitTime / data.completed / 1000).toFixed(2) : 0;
+                            const popVariance = data.waitTimes.length > 1
+                                ? (data.waitTimes.reduce((sum, t) => sum + Math.pow(t - data.totalWaitTime / data.completed, 2), 0) / data.waitTimes.length / 1000000).toFixed(2)
+                                : 0;
                             return (
                                 <div key={pop} className="bg-slate-50 rounded-lg p-4 border border-slate-200">
                                     <div className={`text-sm font-semibold mb-3 ${pop === "ING" ? "text-blue-600" : "text-red-600"}`}>
@@ -59,9 +98,13 @@ const Metrics = ({ stats, config }) => {
                                             <div className="text-slate-500 text-xs mb-1">Rejected</div>
                                             <div className="text-slate-900 font-semibold text-lg">{data.rejected}</div>
                                         </div>
-                                        <div className="col-span-2 pt-2 border-t border-slate-200">
+                                        <div>
                                             <div className="text-slate-500 text-xs mb-1">Avg Wait Time</div>
                                             <div className="text-slate-900 font-semibold text-lg">{avgWaitPop}s</div>
+                                        </div>
+                                        <div>
+                                            <div className="text-slate-500 text-xs mb-1">Variance (s²)</div>
+                                            <div className="text-slate-900 font-semibold text-lg">{popVariance}</div>
                                         </div>
                                     </div>
                                 </div>
@@ -74,7 +117,7 @@ const Metrics = ({ stats, config }) => {
     );
 };
 
-const MetricCard = ({ label, value, color }) => {
+const MetricCard = ({ label, value, subValue, color }) => {
     const colorClasses = {
         green: 'bg-emerald-50 border-emerald-200 text-emerald-700',
         red: 'bg-red-50 border-red-200 text-red-700',
@@ -87,6 +130,7 @@ const MetricCard = ({ label, value, color }) => {
         <div className={`${colorClasses[color]} rounded-lg p-4 border shadow-sm`}>
             <div className="text-xs font-medium mb-2 opacity-75">{label}</div>
             <div className="text-2xl font-bold">{value}</div>
+            {subValue && <div className="text-xs opacity-75 mt-1">{subValue}</div>}
         </div>
     );
 };
