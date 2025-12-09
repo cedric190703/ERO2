@@ -1,7 +1,7 @@
 export class Student {
     constructor(id, type, arrivalTime) {
         this.id = id;
-        this.type = type; // "ING", "PREPA", or "Standard"
+        this.type = type;
         this.arrivalTime = arrivalTime;
         this.status = "Arrived";
         this.x = 100;
@@ -9,7 +9,7 @@ export class Student {
         this.targetX = 100;
         this.targetY = 337.5;
         this.completionTime = null;
-        this.canBeRemoved = false; // Only true when visually done
+        this.canBeRemoved = false;
     }
 
     updatePosition(speed = 5) {
@@ -64,9 +64,7 @@ export class SimulationEngine {
             utilization: []
         };
 
-        // Layout cache
         this.layout = null;
-
         this.init();
     }
 
@@ -94,7 +92,6 @@ export class SimulationEngine {
             };
         });
 
-        // Initialize layout
         this.updateLayout();
     }
 
@@ -136,28 +133,41 @@ export class SimulationEngine {
             execServers,
             resultQueue: { x: resultQueueX, y: centerY },
             resultServers,
-            exitY: H + 100 // Below canvas for removal
+            exitY: H + 100,
+            exitX: W + 50
         };
+    }
+
+    setStudentToExit(student, fromStage = "result") {
+        if (fromStage === "exec") {
+            student.targetX = this.layout.execServers[0]?.x || this.layout.execQueue.x + 100;
+        } else if (fromStage === "result") {
+            student.targetX = this.layout.resultServers[0]?.x || this.layout.exitX;
+        } else {
+            student.targetX = this.layout.source.x;
+        }
+        
+        student.targetY = this.layout.exitY;
+        student.canBeRemoved = true;
     }
 
     update(dt) {
         if (this.paused || this.finished) return;
 
-        // Apply speed multiplier
         const scaledDt = dt * (this.config.speed || 1);
         this.time += scaledDt;
 
-        // Check if max duration reached
         if (this.config.maxDuration && this.time >= this.config.maxDuration * 1000) {
             this.finished = true;
             this.paused = true;
             return;
         }
 
+        this.updateStudentPositions(dt);
         this.handleArrivals(scaledDt);
+        this.processQueueTransitions();
         this.handleExecution(scaledDt);
         this.handleResults(scaledDt);
-        this.updateStudentPositions(dt); // Keep visual speed constant
         this.cleanupStudents();
         this.recordHistory();
     }
@@ -182,8 +192,7 @@ export class SimulationEngine {
                 this.students.push(student);
 
                 if (this.config.execQueueCap === Infinity || this.execQueue.length < this.config.execQueueCap) {
-                    student.status = "Queued_Exec";
-                    this.execQueue.push(student);
+                    student.status = "Moving_To_Exec_Queue";
                     student.targetX = this.layout.execQueue.x;
                     student.targetY = this.layout.execQueue.y;
                 } else {
@@ -191,15 +200,57 @@ export class SimulationEngine {
                     this.stats.rejected++;
                     this.stats.rejectedExec++;
                     this.stats.popStats[pop.name].rejected++;
-                    student.targetX = this.layout.source.x;
-                    student.targetY = this.layout.exitY; // Move down to exit
-                    student.canBeRemoved = true; // Mark for removal when reaches exit
+                    this.setStudentToExit(student, "arrival");
+                }
+            }
+        });
+    }
+
+    // Nouvelle méthode pour gérer les transitions vers les queues
+    processQueueTransitions() {
+        this.students.forEach(s => {
+            // Transition vers exec queue
+            if (s.status === "Moving_To_Exec_Queue" && s.hasReachedTarget()) {
+                if (this.config.execQueueCap === Infinity || this.execQueue.length < this.config.execQueueCap) {
+                    s.status = "Queued_Exec";
+                    this.execQueue.push(s);
+                } else {
+                    s.status = "Rejected_Exec";
+                    this.stats.rejected++;
+                    this.stats.rejectedExec++;
+                    this.stats.popStats[s.type].rejected++;
+                    this.setStudentToExit(s, "arrival");
+                }
+            }
+
+            // Transition vers result queue
+            if (s.status === "Moving_To_Result_Queue" && s.hasReachedTarget()) {
+                if (this.config.resultQueueCap === Infinity || this.resultQueue.length < this.config.resultQueueCap) {
+                    s.status = "Queued_Result";
+                    this.resultQueue.push(s);
+                } else {
+                    const saved = this.config.backupProb > 0 && Math.random() < this.config.backupProb;
+                    if (saved) {
+                        s.status = "Saved_By_Backup";
+                        s.completionTime = this.time;
+                        this.stats.savedByBackup++;
+                        this.recordCompletion(s);
+                        this.setStudentToExit(s, "result");
+                    } else {
+                        s.status = "Rejected_Result";
+                        this.stats.rejected++;
+                        this.stats.rejectedResult++;
+                        this.stats.blankPages++;
+                        this.stats.popStats[s.type].rejected++;
+                        this.setStudentToExit(s, "result");
+                    }
                 }
             }
         });
     }
 
     handleExecution(dt) {
+        // D'abord, assigner les students de la queue aux serveurs libres
         this.execServers.forEach((server, idx) => {
             if (server.status === "free" && this.execQueue.length > 0) {
                 if (this.config.damEnabled && this.config.scenario === "Channels") {
@@ -210,7 +261,6 @@ export class SimulationEngine {
                     }
                 }
 
-                // Select student based on priority mode
                 let studentIndex = 0;
                 if (this.config.scenario === "Channels" && this.config.priorityMode) {
                     switch (this.config.priorityMode) {
@@ -223,11 +273,10 @@ export class SimulationEngine {
                             if (prepaIdx !== -1) studentIndex = prepaIdx;
                             break;
                         case "SJF":
-                            // Shortest Job First: prioritize ING (shorter exec time)
                             const sjfIdx = this.execQueue.findIndex(s => s.type === "ING");
                             if (sjfIdx !== -1) studentIndex = sjfIdx;
                             break;
-                        default: // FIFO
+                        default:
                             studentIndex = 0;
                     }
                 }
@@ -235,7 +284,7 @@ export class SimulationEngine {
                 const student = this.execQueue.splice(studentIndex, 1)[0];
                 server.status = "busy";
                 server.currentStudent = student;
-                student.status = "Executing";
+                student.status = "Moving_To_Exec_Server";
 
                 let execTime = this.config.avgExecTime;
                 if (this.config.scenario === "Channels") {
@@ -246,42 +295,51 @@ export class SimulationEngine {
                 student.targetX = this.layout.execServers[idx].x;
                 student.targetY = this.layout.execServers[idx].y;
             }
+        });
 
-            if (server.status === "busy") {
-                server.remainingTime -= dt;
-                if (server.remainingTime <= 0) {
-                    const student = server.currentStudent;
-                    server.status = "free";
-                    server.currentStudent = null;
+        // Ensuite, traiter les serveurs occupés
+        this.execServers.forEach((server, idx) => {
+            if (server.status === "busy" && server.currentStudent) {
+                const student = server.currentStudent;
+                
+                // Vérifier si le student a atteint le serveur
+                if (student.status === "Moving_To_Exec_Server" && student.hasReachedTarget()) {
+                    student.status = "Executing";
+                }
 
-                    let saved = false;
-                    if (this.config.backupProb > 0 && Math.random() < this.config.backupProb) {
-                        saved = true;
-                    }
+                // CORRECTION: On décrémente le temps UNIQUEMENT si le student a atteint le serveur
+                if (student.status === "Executing") {
+                    server.remainingTime -= dt;
+                    
+                    if (server.remainingTime <= 0) {
+                        // Libérer le serveur
+                        server.status = "free";
+                        server.currentStudent = null;
 
-                    if (this.config.resultQueueCap === Infinity || this.resultQueue.length < this.config.resultQueueCap) {
-                        student.status = "Queued_Result";
-                        this.resultQueue.push(student);
-                        student.targetX = this.layout.resultQueue.x;
-                        student.targetY = this.layout.resultQueue.y;
-                    } else {
-                        if (saved) {
-                            student.status = "Saved_By_Backup";
-                            student.completionTime = this.time;
-                            this.stats.savedByBackup++;
-                            this.recordCompletion(student);
-                            student.targetX = this.layout.resultServers[0].x + 100;
-                            student.targetY = this.layout.exitY;
-                            student.canBeRemoved = true;
+                        let saved = false;
+                        if (this.config.backupProb > 0 && Math.random() < this.config.backupProb) {
+                            saved = true;
+                        }
+
+                        if (this.config.resultQueueCap === Infinity || this.resultQueue.length < this.config.resultQueueCap) {
+                            student.status = "Moving_To_Result_Queue";
+                            student.targetX = this.layout.resultQueue.x;
+                            student.targetY = this.layout.resultQueue.y;
                         } else {
-                            student.status = "Rejected_Result";
-                            this.stats.rejected++;
-                            this.stats.rejectedResult++;
-                            this.stats.blankPages++;
-                            this.stats.popStats[student.type].rejected++;
-                            student.targetX = this.layout.resultServers[0].x + 100;
-                            student.targetY = this.layout.exitY;
-                            student.canBeRemoved = true;
+                            if (saved) {
+                                student.status = "Saved_By_Backup";
+                                student.completionTime = this.time;
+                                this.stats.savedByBackup++;
+                                this.recordCompletion(student);
+                                this.setStudentToExit(student, "result");
+                            } else {
+                                student.status = "Rejected_Result";
+                                this.stats.rejected++;
+                                this.stats.rejectedResult++;
+                                this.stats.blankPages++;
+                                this.stats.popStats[student.type].rejected++;
+                                this.setStudentToExit(student, "result");
+                            }
                         }
                     }
                 }
@@ -290,32 +348,44 @@ export class SimulationEngine {
     }
 
     handleResults(dt) {
+        // D'abord, assigner les students aux serveurs libres
         this.resultServers.forEach((server, idx) => {
             if (server.status === "free" && this.resultQueue.length > 0) {
                 const student = this.resultQueue.shift();
                 server.status = "busy";
                 server.currentStudent = student;
-                student.status = "Resulting";
+                student.status = "Moving_To_Result_Server";
 
                 server.remainingTime = -Math.log(Math.random()) * this.config.avgResultTime * 1000;
 
                 student.targetX = this.layout.resultServers[idx].x;
                 student.targetY = this.layout.resultServers[idx].y;
             }
+        });
 
-            if (server.status === "busy") {
-                server.remainingTime -= dt;
-                if (server.remainingTime <= 0) {
-                    const student = server.currentStudent;
-                    server.status = "free";
-                    server.currentStudent = null;
-                    student.status = "Done";
-                    student.completionTime = this.time;
-                    student.targetX = this.layout.resultServers[idx].x + 100;
-                    student.targetY = this.layout.exitY; // Exit downward
-                    student.canBeRemoved = true; // Mark for removal when reaches exit
+        // Ensuite, traiter les serveurs occupés
+        this.resultServers.forEach((server, idx) => {
+            if (server.status === "busy" && server.currentStudent) {
+                const student = server.currentStudent;
+                
+                // Vérifier si le student a atteint le serveur
+                if (student.status === "Moving_To_Result_Server" && student.hasReachedTarget()) {
+                    student.status = "Resulting";
+                }
 
-                    this.recordCompletion(student);
+                // CORRECTION: On décrémente le temps UNIQUEMENT si le student a atteint le serveur
+                if (student.status === "Resulting") {
+                    server.remainingTime -= dt;
+                    
+                    if (server.remainingTime <= 0) {
+                        server.status = "free";
+                        server.currentStudent = null;
+                        
+                        student.status = "Done";
+                        student.completionTime = this.time;
+                        this.recordCompletion(student);
+                        this.setStudentToExit(student, "result");
+                    }
                 }
             }
         });
@@ -340,13 +410,11 @@ export class SimulationEngine {
     }
 
     cleanupStudents() {
-        // Remove students that have visually reached their exit point
         this.students = this.students.filter(s => {
-            // Only remove if marked for removal AND has visually reached exit
             if (s.canBeRemoved && s.hasReachedTarget() && s.y > 600) {
-                return false; // Remove this student
+                return false;
             }
-            return true; // Keep this student
+            return true;
         });
     }
 
@@ -369,12 +437,10 @@ export class SimulationEngine {
         return sumSquaredDiff / this.stats.waitTimes.length;
     }
 
-    // Run simulation instantly without animation until maxDuration
     runToCompletion() {
         const maxTime = (this.config.maxDuration || 60) * 1000;
-        const stepSize = 100; // 100ms steps for accuracy
+        const stepSize = 100;
 
-        // Clear visual students for performance
         this.students = [];
 
         while (this.time < maxTime) {
@@ -384,14 +450,11 @@ export class SimulationEngine {
             this.handleResultsInstant(stepSize);
         }
 
-        // Finish all pending jobs in queues and servers
         this.finishPendingJobs();
-
         this.finished = true;
         this.paused = true;
     }
 
-    // Simplified arrival handling for instant mode (no visual positions)
     handleArrivalsInstant(dt) {
         const populations = this.config.scenario === "Waterfall"
             ? [{ name: "Standard", rate: this.config.arrivalRate }]
@@ -422,14 +485,12 @@ export class SimulationEngine {
     handleExecutionInstant(dt) {
         this.execServers.forEach(server => {
             if (server.status === "free" && this.execQueue.length > 0) {
-                // Check dam
                 if (this.config.damEnabled && this.config.scenario === "Channels") {
                     const cycle = this.config.damBlockTime + this.config.damOpenTime;
                     const phase = (this.time / 1000) % cycle;
                     if (phase < this.config.damBlockTime) return;
                 }
 
-                // Select based on priority
                 let studentIndex = 0;
                 if (this.config.scenario === "Channels" && this.config.priorityMode) {
                     const findIdx = (type) => this.execQueue.findIndex(s => s.type === type);
@@ -506,7 +567,6 @@ export class SimulationEngine {
     }
 
     finishPendingJobs() {
-        // Process all jobs currently in execution servers
         this.execServers.forEach(server => {
             if (server.status === "busy" && server.currentStudent) {
                 const student = server.currentStudent;
@@ -516,20 +576,17 @@ export class SimulationEngine {
             }
         });
 
-        // Process all jobs in exec queue through execution and results
         while (this.execQueue.length > 0) {
             const student = this.execQueue.shift();
             this.resultQueue.push(student);
         }
 
-        // Process all jobs in result queue through results servers
         while (this.resultQueue.length > 0) {
             const student = this.resultQueue.shift();
             student.completionTime = this.time;
             this.recordCompletion(student);
         }
 
-        // Process any still in result servers
         this.resultServers.forEach(server => {
             if (server.status === "busy" && server.currentStudent) {
                 const student = server.currentStudent;
