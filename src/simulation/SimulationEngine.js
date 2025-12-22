@@ -17,9 +17,12 @@ export class Student {
         const dy = this.targetY - this.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
 
-        if (dist > 1) {
-            this.x += (dx / dist) * speed;
-            this.y += (dy / dist) * speed;
+        if (dist > 2) {
+            // Easing: faster when far, slower when close (smooth deceleration)
+            const easeFactor = Math.min(1, dist / 100);
+            const adjustedSpeed = speed * (0.3 + 0.7 * easeFactor);
+            this.x += (dx / dist) * adjustedSpeed;
+            this.y += (dy / dist) * adjustedSpeed;
         } else {
             this.x = this.targetX;
             this.y = this.targetY;
@@ -29,7 +32,7 @@ export class Student {
     hasReachedTarget() {
         const dx = this.targetX - this.x;
         const dy = this.targetY - this.y;
-        return Math.sqrt(dx * dx + dy * dy) < 3;
+        return Math.sqrt(dx * dx + dy * dy) < 5;
     }
 }
 
@@ -44,6 +47,10 @@ export class SimulationEngine {
         this.resultQueue = [];
         this.execServers = [];
         this.resultServers = [];
+
+        // Backup storage for visualization
+        this.backupStorage = [];
+        this.damBlocked = false;
 
         this.stats = {
             completed: 0,
@@ -61,7 +68,9 @@ export class SimulationEngine {
             time: [],
             execQueue: [],
             resultQueue: [],
-            utilization: []
+            utilization: [],
+            backupCount: [],
+            damBlocked: []
         };
 
         this.layout = null;
@@ -133,6 +142,7 @@ export class SimulationEngine {
             execServers,
             resultQueue: { x: resultQueueX, y: centerY },
             resultServers,
+            backupStorage: { x: resultQueueX, y: centerY + 120 },
             exitY: H + 100,
             exitX: W + 50
         };
@@ -146,7 +156,7 @@ export class SimulationEngine {
         } else {
             student.targetX = this.layout.source.x;
         }
-        
+
         student.targetY = this.layout.exitY;
         student.canBeRemoved = true;
     }
@@ -231,11 +241,12 @@ export class SimulationEngine {
                 } else {
                     const saved = this.config.backupProb > 0 && Math.random() < this.config.backupProb;
                     if (saved) {
-                        s.status = "Saved_By_Backup";
+                        s.status = "Moving_To_Backup";
+                        s.targetX = this.layout.backupStorage.x;
+                        s.targetY = this.layout.backupStorage.y;
                         s.completionTime = this.time;
                         this.stats.savedByBackup++;
-                        this.recordCompletion(s);
-                        this.setStudentToExit(s, "result");
+                        this.backupStorage.push(s);
                     } else {
                         s.status = "Rejected_Result";
                         this.stats.rejected++;
@@ -246,19 +257,32 @@ export class SimulationEngine {
                     }
                 }
             }
+
+            // Handle backup storage arrival
+            if (s.status === "Moving_To_Backup" && s.hasReachedTarget()) {
+                s.status = "Saved_By_Backup";
+                this.recordCompletion(s);
+                s.canBeRemoved = true;
+                s.targetY = this.layout.exitY;
+            }
         });
     }
 
     handleExecution(dt) {
+        // Update dam state for visualization
+        if (this.config.damEnabled && this.config.scenario === "Channels") {
+            const cycle = this.config.damBlockTime + this.config.damOpenTime;
+            const phase = (this.time / 1000) % cycle;
+            this.damBlocked = phase < this.config.damBlockTime;
+        } else {
+            this.damBlocked = false;
+        }
+
         // D'abord, assigner les students de la queue aux serveurs libres
         this.execServers.forEach((server, idx) => {
             if (server.status === "free" && this.execQueue.length > 0) {
-                if (this.config.damEnabled && this.config.scenario === "Channels") {
-                    const cycle = this.config.damBlockTime + this.config.damOpenTime;
-                    const phase = (this.time / 1000) % cycle;
-                    if (phase < this.config.damBlockTime) {
-                        return;
-                    }
+                if (this.damBlocked) {
+                    return;
                 }
 
                 let studentIndex = 0;
@@ -301,7 +325,7 @@ export class SimulationEngine {
         this.execServers.forEach((server, idx) => {
             if (server.status === "busy" && server.currentStudent) {
                 const student = server.currentStudent;
-                
+
                 // Vérifier si le student a atteint le serveur
                 if (student.status === "Moving_To_Exec_Server" && student.hasReachedTarget()) {
                     student.status = "Executing";
@@ -310,7 +334,7 @@ export class SimulationEngine {
                 // CORRECTION: On décrémente le temps UNIQUEMENT si le student a atteint le serveur
                 if (student.status === "Executing") {
                     server.remainingTime -= dt;
-                    
+
                     if (server.remainingTime <= 0) {
                         // Libérer le serveur
                         server.status = "free";
@@ -327,11 +351,12 @@ export class SimulationEngine {
                             student.targetY = this.layout.resultQueue.y;
                         } else {
                             if (saved) {
-                                student.status = "Saved_By_Backup";
+                                student.status = "Moving_To_Backup";
+                                student.targetX = this.layout.backupStorage.x;
+                                student.targetY = this.layout.backupStorage.y;
                                 student.completionTime = this.time;
                                 this.stats.savedByBackup++;
-                                this.recordCompletion(student);
-                                this.setStudentToExit(student, "result");
+                                this.backupStorage.push(student);
                             } else {
                                 student.status = "Rejected_Result";
                                 this.stats.rejected++;
@@ -367,7 +392,7 @@ export class SimulationEngine {
         this.resultServers.forEach((server, idx) => {
             if (server.status === "busy" && server.currentStudent) {
                 const student = server.currentStudent;
-                
+
                 // Vérifier si le student a atteint le serveur
                 if (student.status === "Moving_To_Result_Server" && student.hasReachedTarget()) {
                     student.status = "Resulting";
@@ -376,11 +401,11 @@ export class SimulationEngine {
                 // CORRECTION: On décrémente le temps UNIQUEMENT si le student a atteint le serveur
                 if (student.status === "Resulting") {
                     server.remainingTime -= dt;
-                    
+
                     if (server.remainingTime <= 0) {
                         server.status = "free";
                         server.currentStudent = null;
-                        
+
                         student.status = "Done";
                         student.completionTime = this.time;
                         this.recordCompletion(student);
@@ -427,6 +452,10 @@ export class SimulationEngine {
             const busyExec = this.execServers.filter(s => s.status === "busy").length;
             const utilization = busyExec / this.execServers.length;
             this.history.utilization.push(utilization * 100);
+
+            // Track backup and dam state for visualization
+            this.history.backupCount.push(this.backupStorage.length);
+            this.history.damBlocked.push(this.damBlocked ? 1 : 0);
         }
     }
 
@@ -605,6 +634,8 @@ export class SimulationEngine {
         this.students = [];
         this.execQueue = [];
         this.resultQueue = [];
+        this.backupStorage = [];
+        this.damBlocked = false;
         this.stats = {
             completed: 0,
             rejected: 0,
@@ -620,7 +651,9 @@ export class SimulationEngine {
             time: [],
             execQueue: [],
             resultQueue: [],
-            utilization: []
+            utilization: [],
+            backupCount: [],
+            damBlocked: []
         };
         this.init();
     }

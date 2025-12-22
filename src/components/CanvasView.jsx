@@ -104,6 +104,22 @@ const CanvasView = ({ engine, config }) => {
                 drawServerNode(ctx, pos, `R${i + 1}`, isBusy, hoveredNode?.name === `Result ${i + 1}`);
             });
 
+            // Draw Backup Storage if backup is enabled
+            if (config.backupProb > 0) {
+                drawBackupNode(ctx, layout.backupStorage, 'Backup', engine.backupStorage?.length || 0, engine.stats?.savedByBackup || 0, hoveredNode?.name === 'Backup');
+                // Draw arrow from Result Queue to Backup
+                ctx.strokeStyle = '#10b981';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                drawArrow(ctx, layout.resultQueue.x, layout.resultQueue.y + 40, layout.backupStorage.x, layout.backupStorage.y - 30);
+                ctx.setLineDash([]);
+            }
+
+            // Draw Dam Indicator if dam is enabled and blocked
+            if (engine.damBlocked) {
+                drawDamIndicator(ctx, layout.execQueue.x + 60, layout.execQueue.y);
+            }
+
             // Draw students
             engine.students.forEach(s => {
                 drawStudent(ctx, s, s === hoveredStudent);
@@ -186,7 +202,8 @@ function getLayout(W, H, config) {
         execQueue: { x: execQueueX, y: centerY },
         execServers,
         resultQueue: { x: resultQueueX, y: centerY },
-        resultServers
+        resultServers,
+        backupStorage: { x: resultQueueX, y: centerY + 120 }
     };
 }
 
@@ -358,7 +375,14 @@ function drawStudent(ctx, student, isHovered) {
     };
 
     const isRejected = student.status.includes("Rejected");
-    const color = isRejected ? '#94a3b8' : colorMap[student.type];
+    const isSavedByBackup = student.status === "Saved_By_Backup" || student.status === "Moving_To_Backup";
+    let color = colorMap[student.type];
+
+    if (isRejected) {
+        color = '#94a3b8';
+    } else if (isSavedByBackup) {
+        color = '#10b981'; // Green for saved
+    }
 
     // Student circle
     ctx.beginPath();
@@ -371,7 +395,7 @@ function drawStudent(ctx, student, isHovered) {
     ctx.lineWidth = isHovered ? 2.5 : 2;
     ctx.stroke();
 
-    // Rejection marker
+    // Rejection marker (X)
     if (isRejected) {
         ctx.strokeStyle = '#ef4444';
         ctx.lineWidth = 2;
@@ -382,6 +406,86 @@ function drawStudent(ctx, student, isHovered) {
         ctx.lineTo(student.x - 4, student.y + 4);
         ctx.stroke();
     }
+
+    // Backup saved marker (checkmark)
+    if (isSavedByBackup) {
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(student.x - 3, student.y);
+        ctx.lineTo(student.x - 1, student.y + 3);
+        ctx.lineTo(student.x + 4, student.y - 3);
+        ctx.stroke();
+    }
+}
+
+function drawBackupNode(ctx, pos, label, currentCount, totalSaved, isHovered) {
+    const radius = isHovered ? 38 : 35;
+    const color = '#10b981'; // Green
+
+    if (isHovered) {
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 15;
+    }
+
+    // Node rounded rectangle background
+    ctx.beginPath();
+    ctx.roundRect(pos.x - radius, pos.y - radius * 0.7, radius * 2, radius * 1.4, 10);
+    ctx.fillStyle = '#ecfdf5';
+    ctx.fill();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    ctx.shadowBlur = 0;
+
+    // Backup icon (simple disk)
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.ellipse(pos.x, pos.y - 8, 12, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.rect(pos.x - 12, pos.y - 8, 24, 12);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(pos.x, pos.y + 4, 12, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Count
+    ctx.fillStyle = '#0f172a';
+    ctx.font = 'bold 11px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`Saved: ${totalSaved}`, pos.x, pos.y + radius * 0.7 + 15);
+}
+
+function drawDamIndicator(ctx, x, y) {
+    // Dam blocked indicator - red barrier
+    ctx.fillStyle = '#ef4444';
+    ctx.strokeStyle = '#b91c1c';
+    ctx.lineWidth = 2;
+
+    // Draw barrier
+    ctx.beginPath();
+    ctx.roundRect(x - 5, y - 25, 10, 50, 3);
+    ctx.fill();
+    ctx.stroke();
+
+    // Striped pattern
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    for (let i = -20; i < 25; i += 10) {
+        ctx.beginPath();
+        ctx.moveTo(x - 4, y + i);
+        ctx.lineTo(x + 4, y + i + 5);
+        ctx.stroke();
+    }
+
+    // Label
+    ctx.fillStyle = '#ef4444';
+    ctx.font = 'bold 9px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('BLOCKED', x, y + 40);
 }
 
 export default CanvasView;
+

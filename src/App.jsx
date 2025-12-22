@@ -3,6 +3,7 @@ import Controls from './components/Controls';
 import CanvasView from './components/CanvasView';
 import Metrics from './components/Metrics';
 import Charts from './components/Charts';
+import SimulationReport from './components/SimulationReport';
 import { SimulationEngine } from './simulation/SimulationEngine';
 
 function App() {
@@ -32,6 +33,7 @@ function App() {
   const [stats, setStats] = useState(null);
   const [paused, setPaused] = useState(false);
   const [finished, setFinished] = useState(false);
+  const [showReport, setShowReport] = useState(false);
   const requestRef = useRef();
   const lastTimeRef = useRef(Date.now());
   const lastStatsUpdate = useRef(0);
@@ -39,8 +41,10 @@ function App() {
   // Reinitialize engine when critical config changes
   useEffect(() => {
     engineRef.current = new SimulationEngine(config);
+    engineRef.current.paused = true; // Start paused
     setStats({ ...engineRef.current.stats });
-    setPaused(false);
+    setPaused(true); // Start paused - user must click Play
+    setFinished(false);
   }, [
     config.scenario,
     config.numExecServers,
@@ -85,6 +89,7 @@ function App() {
       setStats({ ...engineRef.current.stats });
       setFinished(false);
       setPaused(false);
+      setShowReport(false);
     }
   };
 
@@ -95,14 +100,7 @@ function App() {
     }
   };
 
-  const handleStop = () => {
-    if (engineRef.current) {
-      engineRef.current.finished = true;
-      engineRef.current.paused = true;
-      setFinished(true);
-      setPaused(true);
-    }
-  };
+
 
   const handleFastForward = () => {
     if (engineRef.current && !finished) {
@@ -132,20 +130,21 @@ function App() {
                 ✓ Simulation terminée
               </div>
             )}
+            {finished && (
+              <button
+                onClick={() => setShowReport(true)}
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-2.5 px-4 rounded-lg font-medium transition-all text-sm mb-4 shadow-md"
+              >
+                📊 View Report
+              </button>
+            )}
             <div className="flex gap-2 mb-2">
               <button
                 onClick={handleTogglePause}
                 disabled={finished}
-                className={`flex-1 py-2.5 px-4 rounded-lg font-medium transition-colors text-sm text-white ${finished ? 'bg-slate-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
+                className={`flex-1 py-2.5 px-4 rounded-lg font-medium transition-colors text-sm text-white ${finished ? 'bg-slate-400 cursor-not-allowed' : paused ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'}`}
               >
-                {paused ? 'Play' : 'Pause'}
-              </button>
-              <button
-                onClick={handleStop}
-                disabled={finished}
-                className={`flex-1 py-2.5 px-4 rounded-lg font-medium transition-colors text-sm text-white ${finished ? 'bg-slate-400 cursor-not-allowed' : 'bg-orange-600 hover:bg-orange-700'}`}
-              >
-                Stop
+                {paused ? '▶ Play' : '⏸ Pause'}
               </button>
             </div>
             <div className="flex gap-2 mb-4">
@@ -213,6 +212,15 @@ function App() {
           </div>
         </div>
       </div>
+
+      {/* Simulation Report Modal */}
+      {showReport && (
+        <SimulationReport
+          engine={engineRef.current}
+          config={config}
+          onClose={() => setShowReport(false)}
+        />
+      )}
     </div>
   );
 }
