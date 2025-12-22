@@ -178,30 +178,176 @@ const SimulationReport = ({ engine, config, onClose }) => {
                         </section>
                     )}
 
-                    {/* Theoretical Analysis */}
+                    {/* SAÉ Analysis - Waterfall Questions */}
+                    {config.scenario === "Waterfall" && (
+                        <section>
+                            <h3 className="text-lg font-semibold text-slate-800 mb-4">📋 SAÉ Analysis - Waterfall Model</h3>
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-4">
+                                {/* Q1: System Model */}
+                                <AnalysisItem
+                                    question="1. Système d'attente proposé"
+                                    answer={`Le système modélise un M/M/K avec K=${K} serveurs d'exécution suivi d'un M/M/1 pour le serveur de résultat. Les files FIFO ${config.execQueueCap === Infinity ? 'infinies' : `finies (ks=${config.execQueueCap}, kf=${config.resultQueueCap})`} sont implémentées.`}
+                                />
+
+                                {/* Q2: Rejection Analysis */}
+                                {(config.execQueueCap !== Infinity || config.resultQueueCap !== Infinity) && (
+                                    <AnalysisItem
+                                        question="2. Proportions de refus selon les paramètres"
+                                        answer={`
+                                            • Taux de rejet file exec (ks=${config.execQueueCap}): ${execRejectRate.toFixed(2)}% (${stats.rejectedExec} refusés → message d'erreur)
+                                            • Taux de rejet file result (kf=${config.resultQueueCap}): ${resultRejectRate.toFixed(2)}% (${stats.rejectedResult} refusés → pages blanches: ${stats.blankPages})
+                                            • Avec λ=${lambda.toFixed(2)} et ρ=${rho.toFixed(3)}, le système ${rho >= 1 ? 'est saturé (ρ≥1)' : rho > 0.8 ? 'approche la saturation' : 'est stable'}.
+                                            • Recommandation: Augmenter K ou ks si rejet exec > 5%, augmenter kf si pages blanches > 0.
+                                        `}
+                                    />
+                                )}
+
+                                {/* Q3: Backup Analysis */}
+                                {config.backupProb > 0 && (
+                                    <AnalysisItem
+                                        question="3. Analyse du mécanisme de backup"
+                                        answer={`
+                                            • Impact sur pages blanches: ${config.backupProb === 1
+                                                ? `Le backup systématique (100%) élimine TOUTES les pages blanches. Pages blanches observées: ${stats.blankPages}`
+                                                : `Le backup aléatoire (${(config.backupProb * 100).toFixed(0)}%) réduit les pages blanches. Sauvés: ${stats.savedByBackup}, Perdus: ${stats.blankPages}`}
+                                            
+                                            • Problèmes potentiels du backup systématique:
+                                              1. Goulet d'étranglement: si le stockage backup est lent, il crée un délai
+                                              2. Coût de stockage: 100% backup double les besoins en stockage
+                                              3. Cohérence: risque de données obsolètes si le student re-soumet
+                                            
+                                            • Avantages du backup aléatoire (${(config.backupProb * 100).toFixed(0)}%):
+                                              1. Réduction des coûts de stockage proportionnelle
+                                              2. Distribution de charge plus homogène
+                                              3. Compromis acceptable entre fiabilité et performance
+                                              4. Efficacité observée: ${backupEfficiency.toFixed(1)}% des cas critiques sauvés
+                                        `}
+                                    />
+                                )}
+
+                                {/* Q3 continued: Sojourn Time */}
+                                <AnalysisItem
+                                    question="Temps de séjour moyen et variance empirique"
+                                    answer={`
+                                        • Temps de séjour moyen (W): ${avgWait.toFixed(3)}s
+                                        • Variance empirique: ${variance.toFixed(4)}s²
+                                        • Écart-type (σ): ${stdDev.toFixed(3)}s
+                                        • Loi de Little: L = λ·W = ${lambda.toFixed(2)} × ${avgWait.toFixed(3)} ≈ ${(lambda * avgWait).toFixed(2)} jobs dans le système
+                                        • Formule théorique M/M/K: Wq ≈ ${(1 / (K * mu - lambda)).toFixed(4)}s (si ρ < 1)
+                                    `}
+                                />
+
+                                {/* Parameters Summary */}
+                                <div className="bg-white rounded-lg p-3 text-xs">
+                                    <strong>Paramètres utilisés:</strong> λ={lambda.toFixed(2)} jobs/s, μ={mu.toFixed(2)} jobs/s, K={K} serveurs,
+                                    ks={config.execQueueCap === Infinity ? '∞' : config.execQueueCap},
+                                    kf={config.resultQueueCap === Infinity ? '∞' : config.resultQueueCap},
+                                    backup={config.backupProb * 100}%
+                                </div>
+                            </div>
+                        </section>
+                    )}
+
+                    {/* SAÉ Analysis - Channels & Dams Questions */}
+                    {config.scenario === "Channels" && (
+                        <section>
+                            <h3 className="text-lg font-semibold text-slate-800 mb-4">📋 SAÉ Analysis - Channels & Dams Model</h3>
+                            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 space-y-4">
+                                {/* Q1: Population Variations */}
+                                <AnalysisItem
+                                    question="1. Variations de temps de séjour par population"
+                                    answer={`
+                                        ${stats.popStats?.ING && stats.popStats?.PREPA ? `
+                                        • ING (arrivées fréquentes, jobs courts):
+                                          - Taux d'arrivée: ${config.ingRate.toFixed(2)} jobs/s
+                                          - Temps d'exécution moyen: ${config.ingExecTime}s
+                                          - Temps de séjour moyen: ${(stats.popStats.ING.totalWaitTime / (stats.popStats.ING.completed || 1) / 1000).toFixed(3)}s
+                                          - Jobs complétés: ${stats.popStats.ING.completed}
+                                        
+                                        • PREPA (arrivées rares, jobs longs):
+                                          - Taux d'arrivée: ${config.prepaRate.toFixed(2)} jobs/s
+                                          - Temps d'exécution moyen: ${config.prepaExecTime}s
+                                          - Temps de séjour moyen: ${(stats.popStats.PREPA.totalWaitTime / (stats.popStats.PREPA.completed || 1) / 1000).toFixed(3)}s
+                                          - Jobs complétés: ${stats.popStats.PREPA.completed}
+                                        
+                                        • Ratio de temps de séjour PREPA/ING: ${((stats.popStats.PREPA.totalWaitTime / (stats.popStats.PREPA.completed || 1)) / (stats.popStats.ING.totalWaitTime / (stats.popStats.ING.completed || 1))).toFixed(2)}x
+                                        ` : 'Données de population non disponibles'}
+                                    `}
+                                />
+
+                                {/* Q2: Dam Analysis */}
+                                {config.damEnabled && (
+                                    <AnalysisItem
+                                        question="2. Comparaison avec/sans barrage (Dam)"
+                                        answer={`
+                                            • Configuration du barrage:
+                                              - Temps de blocage (tb): ${config.damBlockTime}s
+                                              - Temps d'ouverture: ${config.damOpenTime}s
+                                              - Ratio ouverture/cycle: ${((config.damOpenTime / (config.damBlockTime + config.damOpenTime)) * 100).toFixed(1)}%
+                                            
+                                            • Effet du barrage:
+                                              - Le barrage bloque périodiquement l'accès aux serveurs d'exécution
+                                              - Cela régule le flux des ING (arrivées fréquentes) en accumulant dans la file
+                                              - Les PREPA bénéficient de fenêtres avec moins de compétition
+                                            
+                                            • Impact attendu:
+                                              - Temps d'attente ING ↑ (accumulation pendant blocage)
+                                              - Temps d'attente PREPA ↓ (moins de compétition)
+                                              - Variance globale ↑ (attentes en rafales)
+                                        `}
+                                    />
+                                )}
+
+                                {/* Q2 continued: Alternative Scheduling */}
+                                <AnalysisItem
+                                    question="Stratégie alternative pour minimiser le temps de séjour"
+                                    answer={`
+                                        • Stratégie actuelle: ${config.priorityMode}
+                                        
+                                        • Recommandation: Shortest Job First (SJF)
+                                          - Priorise les jobs ING (temps d'exécution ${config.ingExecTime}s < ${config.prepaExecTime}s)
+                                          - Minimise le temps d'attente moyen global
+                                          - Théorème: SJF est optimal pour minimiser le temps moyen
+                                        
+                                        • Alternatives possibles:
+                                          1. SJF: Optimal pour temps moyen, mais défavorise PREPA
+                                          2. Round-Robin par population: équité mais pas optimal
+                                          3. Files séparées: isolation mais sous-utilisation si déséquilibre
+                                          4. PREPA First: favorise jobs longs, réduit variance PREPA
+                                        
+                                        • Trade-off équité vs efficacité:
+                                          - SJF: temps global ↓, mais PREPA pénalisés
+                                          - Dam: équité ↑, mais temps global ↑
+                                    `}
+                                />
+
+                                {/* Parameters Summary */}
+                                <div className="bg-white rounded-lg p-3 text-xs">
+                                    <strong>Paramètres:</strong>
+                                    ING: λ={config.ingRate}, μ={1 / config.ingExecTime.toFixed(2)} |
+                                    PREPA: λ={config.prepaRate}, μ={1 / config.prepaExecTime.toFixed(2)} |
+                                    K={K} serveurs, Dam={config.damEnabled ? 'ON' : 'OFF'}, Mode={config.priorityMode}
+                                </div>
+                            </div>
+                        </section>
+                    )}
+
+                    {/* Theoretical Analysis (Common) */}
                     <section>
-                        <h3 className="text-lg font-semibold text-slate-800 mb-4">📚 Theoretical Analysis</h3>
-                        <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-4 text-sm">
+                        <h3 className="text-lg font-semibold text-slate-800 mb-4">📚 Modèle Théorique</h3>
+                        <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3 text-sm">
                             <div>
-                                <strong>System Model:</strong> {config.scenario === "Waterfall" ? "M/M/K" : "Multi-class M/M/K"} with {K} servers
+                                <strong>Système modélisé:</strong> {config.scenario === "Waterfall" ? "M/M/K → M/M/1" : "Multi-classe M/M/K"} avec K={K} serveurs
                             </div>
                             <div>
-                                <strong>Traffic Intensity (ρ):</strong> λ/(K×μ) = {lambda.toFixed(2)}/({K}×{mu.toFixed(2)}) = {rho.toFixed(3)}
-                                {rho >= 1 && <span className="text-red-600 ml-2">⚠️ System overloaded (ρ ≥ 1)</span>}
+                                <strong>Intensité du trafic (ρ):</strong> λ/(K×μ) = {lambda.toFixed(2)}/({K}×{mu.toFixed(2)}) = <span className={rho >= 1 ? 'text-red-600 font-bold' : rho > 0.8 ? 'text-orange-600 font-bold' : 'text-green-600 font-bold'}>{rho.toFixed(3)}</span>
+                                {rho >= 1 && <span className="text-red-600 ml-2">⚠️ Système saturé!</span>}
                             </div>
-                            {config.execQueueCap !== Infinity && (
-                                <div>
-                                    <strong>Finite Queue (ks={config.execQueueCap}):</strong> Rejection occurs when queue is full. Observed rejection rate: {execRejectRate.toFixed(1)}%
-                                </div>
-                            )}
-                            {config.resultQueueCap !== Infinity && (
-                                <div>
-                                    <strong>Finite Result Queue (kf={config.resultQueueCap}):</strong> Creates blank pages when full.
-                                    {config.backupProb > 0 && ` Backup mechanism saves ${backupEfficiency.toFixed(0)}% of potential losses.`}
-                                </div>
-                            )}
                             <div>
-                                <strong>Little's Law Verification:</strong> L = λ × W ≈ {(lambda * avgWait).toFixed(2)} jobs in system
+                                <strong>Stabilité:</strong> {rho < 1 ? `Système stable (ρ=${rho.toFixed(3)} < 1)` : `Système instable (ρ=${rho.toFixed(3)} ≥ 1) - les files croîtront indéfiniment`}
+                            </div>
+                            <div>
+                                <strong>Loi de Little:</strong> L = λ × W → {(lambda * avgWait).toFixed(2)} = {lambda.toFixed(2)} × {avgWait.toFixed(3)}
                             </div>
                         </div>
                     </section>
@@ -210,6 +356,14 @@ const SimulationReport = ({ engine, config, onClose }) => {
         </div>
     );
 };
+
+// Analysis Item Component for SAÉ Q&A format
+const AnalysisItem = ({ question, answer }) => (
+    <div className="bg-white rounded-lg p-3 border border-slate-200">
+        <div className="font-semibold text-slate-800 text-sm mb-2">{question}</div>
+        <div className="text-slate-600 text-xs whitespace-pre-line leading-relaxed">{answer}</div>
+    </div>
+);
 
 // Metric Box Component
 const MetricBox = ({ label, value, sub, color }) => {

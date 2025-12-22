@@ -1,5 +1,3 @@
-import React from 'react';
-
 const Metrics = ({ stats, config }) => {
     if (!stats) return null;
 
