@@ -17,24 +17,24 @@ const Metrics = ({ stats, config }) => {
             {/* Global Metrics */}
             <div className="grid grid-cols-5 gap-4">
                 <MetricCard
-                    label="Completed Jobs"
+                    label="Tâches Terminées"
                     value={stats.completed}
                     color="green"
                 />
                 <MetricCard
-                    label="Rejected (Exec)"
+                    label="Rejetés (Exec)"
                     value={stats.rejectedExec}
                     subValue={`${execRejectRate}%`}
                     color="red"
                 />
                 <MetricCard
-                    label="Rejected (Result)"
+                    label="Rejetés (Résultat)"
                     value={stats.rejectedResult}
                     subValue={`${resultRejectRate}%`}
                     color="orange"
                 />
                 <MetricCard
-                    label="Avg Wait Time (s)"
+                    label="Attente Moyenne (s)"
                     value={avgWait}
                     subValue={`σ = ${stdDev}s`}
                     color="blue"
@@ -50,22 +50,22 @@ const Metrics = ({ stats, config }) => {
             {(config.backupProb > 0 || stats.blankPages > 0 || stats.savedByBackup > 0) && (
                 <div className="grid grid-cols-4 gap-4">
                     <MetricCard
-                        label="Saved by Backup"
+                        label="Sauvegardés (Backup)"
                         value={stats.savedByBackup}
                         color="green"
                     />
                     <MetricCard
-                        label="Blank Pages"
+                        label="Pages Blanches"
                         value={stats.blankPages}
                         color="orange"
                     />
                     <MetricCard
-                        label="Backup Efficiency"
+                        label="Efficacité Backup"
                         value={`${backupEfficiency}%`}
                         color="blue"
                     />
                     <MetricCard
-                        label="Total Reject Rate"
+                        label="Taux de Rejet Total"
                         value={`${rejectRate}%`}
                         color="red"
                     />
@@ -75,7 +75,7 @@ const Metrics = ({ stats, config }) => {
             {/* Per-Population Stats */}
             {config.scenario === "Channels" && stats.popStats && (
                 <div className="bg-white rounded-lg p-4 border border-slate-200 shadow-sm">
-                    <h3 className="text-slate-700 font-semibold mb-3 text-sm">Population Metrics</h3>
+                    <h3 className="text-slate-700 font-semibold mb-3 text-sm">Indicateurs par Population</h3>
                     <div className="grid grid-cols-2 gap-4">
                         {Object.entries(stats.popStats).map(([pop, data]) => {
                             const avgWaitPop = data.completed > 0 ? (data.totalWaitTime / data.completed / 1000).toFixed(2) : 0;
@@ -85,19 +85,19 @@ const Metrics = ({ stats, config }) => {
                             return (
                                 <div key={pop} className="bg-slate-50 rounded-lg p-4 border border-slate-200">
                                     <div className={`text-sm font-semibold mb-3 ${pop === "ING" ? "text-blue-600" : "text-red-600"}`}>
-                                        {pop} Population
+                                        Population {pop}
                                     </div>
                                     <div className="grid grid-cols-2 gap-3 text-sm">
                                         <div>
-                                            <div className="text-slate-500 text-xs mb-1">Completed</div>
+                                            <div className="text-slate-500 text-xs mb-1">Terminés</div>
                                             <div className="text-slate-900 font-semibold text-lg">{data.completed}</div>
                                         </div>
                                         <div>
-                                            <div className="text-slate-500 text-xs mb-1">Rejected</div>
+                                            <div className="text-slate-500 text-xs mb-1">Rejetés</div>
                                             <div className="text-slate-900 font-semibold text-lg">{data.rejected}</div>
                                         </div>
                                         <div>
-                                            <div className="text-slate-500 text-xs mb-1">Avg Wait Time</div>
+                                            <div className="text-slate-500 text-xs mb-1">Attente Moyenne</div>
                                             <div className="text-slate-900 font-semibold text-lg">{avgWaitPop}s</div>
                                         </div>
                                         <div>

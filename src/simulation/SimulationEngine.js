@@ -466,6 +466,21 @@ export class SimulationEngine {
         return sumSquaredDiff / this.stats.waitTimes.length;
     }
 
+    getOptimalK() {
+        const lambda = this.config.scenario === "Waterfall"
+            ? this.config.arrivalRate
+            : (this.config.ingRate + this.config.prepaRate);
+
+        const mu = this.config.scenario === "Waterfall"
+            ? (1 / this.config.avgExecTime)
+            : ((this.config.ingRate * (1 / this.config.ingExecTime) + this.config.prepaRate * (1 / this.config.prepaExecTime)) / (this.config.ingRate + this.config.prepaRate));
+
+        // We want rho < 0.8 for safety
+        // rho = lambda / (K * mu) < 0.8 => K > lambda / (0.8 * mu)
+        const optimalK = Math.ceil(lambda / (0.8 * mu));
+        return Math.max(1, optimalK);
+    }
+
     runToCompletion() {
         const maxTime = (this.config.maxDuration || 60) * 1000;
         const stepSize = 100;
@@ -477,6 +492,7 @@ export class SimulationEngine {
             this.handleArrivalsInstant(stepSize);
             this.handleExecutionInstant(stepSize);
             this.handleResultsInstant(stepSize);
+            this.recordHistory();
         }
 
         this.finishPendingJobs();

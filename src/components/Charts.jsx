@@ -15,43 +15,43 @@ const Charts = ({ engine }) => {
     return (
         <div className="space-y-6">
             <div>
-                <h3 className="text-slate-700 font-semibold text-sm mb-4">Performance Metrics</h3>
+                <h3 className="text-slate-700 font-semibold text-sm mb-4">Indicateurs de Performance</h3>
                 <div className="space-y-4">
                     <MiniChart
                         data={recentHistory.execQueue}
-                        label="Execution Queue"
+                        label="File d'Exécution"
                         color="#3b82f6"
                     />
                     <MiniChart
                         data={recentHistory.resultQueue}
-                        label="Result Queue"
+                        label="File de Résultats"
                         color="#8b5cf6"
                     />
                     <MiniChart
                         data={recentHistory.utilization}
-                        label="Server Utilization (%)"
+                        label="Utilisation Serveurs (%)"
                         color="#10b981"
                     />
                 </div>
             </div>
 
             <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-                <h4 className="text-slate-700 text-xs font-semibold mb-3 uppercase tracking-wide">Legend</h4>
+                <h4 className="text-slate-700 text-xs font-semibold mb-3 uppercase tracking-wide">Légende</h4>
                 <div className="space-y-2 text-xs">
                     <LegendItem color="#3b82f6" label="ING / Standard" />
                     <LegendItem color="#ef4444" label="PREPA" />
-                    <LegendItem color="#10b981" label="Free Server" />
-                    <LegendItem color="#3b82f6" label="Busy Server" />
-                    <LegendItem color="#94a3b8" label="Rejected" />
+                    <LegendItem color="#10b981" label="Serveur Libre" />
+                    <LegendItem color="#3b82f6" label="Serveur Occupé" />
+                    <LegendItem color="#94a3b8" label="Rejeté" />
                 </div>
             </div>
 
             <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-                <h4 className="text-slate-700 text-xs font-semibold mb-3 uppercase tracking-wide">System Status</h4>
+                <h4 className="text-slate-700 text-xs font-semibold mb-3 uppercase tracking-wide">État du Système</h4>
                 <div className="space-y-2 text-xs">
-                    <StatusRow label="Simulation Time" value={`${(engine.time / 1000).toFixed(1)}s`} />
-                    <StatusRow label="Active Students" value={engine.students.filter(s => s.status !== "Done" && !s.status.includes("Rejected")).length} />
-                    <StatusRow label="In Queues" value={engine.execQueue.length + engine.resultQueue.length} />
+                    <StatusRow label="Temps de Simulation" value={`${(engine.time / 1000).toFixed(1)}s`} />
+                    <StatusRow label="Étudiants Actifs" value={engine.students.filter(s => s.status !== "Done" && !s.status.includes("Rejected")).length} />
+                    <StatusRow label="Dans les Files" value={engine.execQueue.length + engine.resultQueue.length} />
                 </div>
             </div>
         </div>

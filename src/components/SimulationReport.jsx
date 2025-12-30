@@ -33,52 +33,52 @@ const SimulationReport = ({ engine, config, onClose }) => {
                 {/* Header */}
                 <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-4 rounded-t-2xl flex justify-between items-center sticky top-0">
                     <div>
-                        <h2 className="text-2xl font-bold">Simulation Report</h2>
+                        <h2 className="text-2xl font-bold">Rapport de Simulation</h2>
                         <p className="text-blue-100 text-sm">
-                            {config.scenario} Model | Duration: {(engine.time / 1000).toFixed(1)}s
+                            Modèle {config.scenario} | Durée : {(engine.time / 1000).toFixed(1)}s
                         </p>
                     </div>
                     <button
                         onClick={onClose}
                         className="bg-white/20 hover:bg-white/30 rounded-lg px-4 py-2 font-medium transition-colors"
                     >
-                        Close
+                        Fermer
                     </button>
                 </div>
 
                 <div className="p-6 space-y-6">
                     {/* Summary Metrics */}
                     <section>
-                        <h3 className="text-lg font-semibold text-slate-800 mb-4">📊 Summary Metrics</h3>
+                        <h3 className="text-lg font-semibold text-slate-800 mb-4">Indicateurs de Synthèse</h3>
                         <div className="grid grid-cols-5 gap-4">
-                            <MetricBox label="Completed Jobs" value={stats.completed} color="green" />
-                            <MetricBox label="Total Rejected" value={stats.rejected} sub={`${rejectRate.toFixed(1)}%`} color="red" />
-                            <MetricBox label="Avg Wait Time" value={`${avgWait.toFixed(2)}s`} sub={`σ = ${stdDev.toFixed(2)}s`} color="blue" />
+                            <MetricBox label="Tâches Terminées" value={stats.completed} color="green" />
+                            <MetricBox label="Total Rejetés" value={stats.rejected} sub={`${rejectRate.toFixed(1)}%`} color="red" />
+                            <MetricBox label="Attente Moyenne" value={`${avgWait.toFixed(2)}s`} sub={`σ = ${stdDev.toFixed(2)}s`} color="blue" />
                             <MetricBox label="Variance" value={`${variance.toFixed(2)}s²`} color="purple" />
-                            <MetricBox label="System Load (ρ)" value={`${systemLoad.toFixed(1)}%`} color={rho < 1 ? "green" : "red"} />
+                            <MetricBox label="Charge Système (ρ)" value={`${systemLoad.toFixed(1)}%`} color={rho < 1 ? "green" : "red"} />
                         </div>
                     </section>
 
                     {/* Rejection Analysis */}
                     {(stats.rejectedExec > 0 || stats.rejectedResult > 0) && (
                         <section>
-                            <h3 className="text-lg font-semibold text-slate-800 mb-4">🚫 Rejection Analysis</h3>
+                            <h3 className="text-lg font-semibold text-slate-800 mb-4">Analyse des Rejets</h3>
                             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                                 <div className="grid grid-cols-3 gap-4">
                                     <div>
                                         <div className="text-red-600 text-2xl font-bold">{stats.rejectedExec}</div>
-                                        <div className="text-red-700 text-sm">Rejected at Exec Queue ({execRejectRate.toFixed(1)}%)</div>
-                                        <div className="text-red-500 text-xs mt-1">Students received error message</div>
+                                        <div className="text-red-700 text-sm">Rejetés File Exec ({execRejectRate.toFixed(1)}%)</div>
+                                        <div className="text-red-500 text-xs mt-1">Les étudiants reçoivent un message d'erreur</div>
                                     </div>
                                     <div>
                                         <div className="text-orange-600 text-2xl font-bold">{stats.rejectedResult}</div>
-                                        <div className="text-orange-700 text-sm">Rejected at Result Queue ({resultRejectRate.toFixed(1)}%)</div>
-                                        <div className="text-orange-500 text-xs mt-1">Work completed but results lost</div>
+                                        <div className="text-orange-700 text-sm">Rejetés File Résultat ({resultRejectRate.toFixed(1)}%)</div>
+                                        <div className="text-orange-500 text-xs mt-1">Travail terminé mais résultats perdus</div>
                                     </div>
                                     <div>
                                         <div className="text-slate-600 text-2xl font-bold">{stats.blankPages}</div>
-                                        <div className="text-slate-700 text-sm">Blank Pages</div>
-                                        <div className="text-slate-500 text-xs mt-1">Students received empty result</div>
+                                        <div className="text-slate-700 text-sm">Pages Blanches</div>
+                                        <div className="text-slate-500 text-xs mt-1">Les étudiants reçoivent un résultat vide</div>
                                     </div>
                                 </div>
                             </div>
@@ -88,26 +88,26 @@ const SimulationReport = ({ engine, config, onClose }) => {
                     {/* Backup Analysis */}
                     {(config.backupProb > 0 || stats.savedByBackup > 0) && (
                         <section>
-                            <h3 className="text-lg font-semibold text-slate-800 mb-4">💾 Backup Analysis</h3>
+                            <h3 className="text-lg font-semibold text-slate-800 mb-4">Analyse du Backup</h3>
                             <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                                 <div className="grid grid-cols-3 gap-4">
                                     <div>
                                         <div className="text-green-600 text-2xl font-bold">{stats.savedByBackup}</div>
-                                        <div className="text-green-700 text-sm">Saved by Backup</div>
+                                        <div className="text-green-700 text-sm">Sauvés par le Backup</div>
                                     </div>
                                     <div>
                                         <div className="text-green-600 text-2xl font-bold">{backupEfficiency.toFixed(1)}%</div>
-                                        <div className="text-green-700 text-sm">Backup Efficiency</div>
+                                        <div className="text-green-700 text-sm">Efficacité du Backup</div>
                                     </div>
                                     <div>
                                         <div className="text-slate-600 text-2xl font-bold">{(config.backupProb * 100).toFixed(0)}%</div>
-                                        <div className="text-slate-700 text-sm">Backup Probability</div>
+                                        <div className="text-slate-700 text-sm">Probabilité de Backup</div>
                                     </div>
                                 </div>
                                 <div className="mt-4 p-3 bg-white rounded-lg text-sm text-slate-600">
-                                    <strong>Analysis:</strong> {config.backupProb === 1
-                                        ? "Systematic backup (100%) eliminates all blank pages but may create bottlenecks in high-load scenarios."
-                                        : `Random backup (${(config.backupProb * 100).toFixed(0)}%) provides a balance between data protection and system performance.`
+                                    <strong>Analyse :</strong> {config.backupProb === 1
+                                        ? "Le backup systématique (100%) élimine toutes les pages blanches mais peut créer des goulets d'étranglement en cas de forte charge."
+                                        : `Le backup aléatoire (${(config.backupProb * 100).toFixed(0)}%) offre un équilibre entre protection des données et performance du système.`
                                     }
                                 </div>
                             </div>
@@ -116,12 +116,12 @@ const SimulationReport = ({ engine, config, onClose }) => {
 
                     {/* Charts Row */}
                     <section>
-                        <h3 className="text-lg font-semibold text-slate-800 mb-4">📈 Performance Charts</h3>
+                        <h3 className="text-lg font-semibold text-slate-800 mb-4">Graphiques de Performance</h3>
                         <div className="grid grid-cols-2 gap-6">
-                            <ChartCard title="Queue Lengths Over Time">
+                            <ChartCard title="Longueur des Files au Cours du Temps">
                                 <QueueLengthChart history={history} />
                             </ChartCard>
-                            <ChartCard title="Server Utilization">
+                            <ChartCard title="Utilisation des Serveurs">
                                 <UtilizationChart history={history} />
                             </ChartCard>
                         </div>
@@ -129,8 +129,8 @@ const SimulationReport = ({ engine, config, onClose }) => {
 
                     {/* Wait Time Distribution */}
                     <section>
-                        <h3 className="text-lg font-semibold text-slate-800 mb-4">⏱️ Wait Time Distribution</h3>
-                        <ChartCard title={`Distribution of ${stats.waitTimes.length} completed jobs`}>
+                        <h3 className="text-lg font-semibold text-slate-800 mb-4">Distribution du Temps d'Attente</h3>
+                        <ChartCard title={`Distribution de ${stats.waitTimes.length} tâches terminées`}>
                             <WaitTimeHistogram waitTimes={stats.waitTimes} />
                         </ChartCard>
                     </section>
@@ -138,7 +138,7 @@ const SimulationReport = ({ engine, config, onClose }) => {
                     {/* Population Comparison (Channels scenario) */}
                     {config.scenario === "Channels" && stats.popStats && (
                         <section>
-                            <h3 className="text-lg font-semibold text-slate-800 mb-4">👥 Population Comparison</h3>
+                            <h3 className="text-lg font-semibold text-slate-800 mb-4">Comparaison par Population</h3>
                             <div className="grid grid-cols-2 gap-6">
                                 {Object.entries(stats.popStats).map(([pop, data]) => {
                                     const popAvgWait = data.completed > 0 ? data.totalWaitTime / data.completed / 1000 : 0;
@@ -148,19 +148,19 @@ const SimulationReport = ({ engine, config, onClose }) => {
                                     return (
                                         <div key={pop} className={`p-4 rounded-lg border-2 ${pop === "ING" ? "bg-blue-50 border-blue-200" : "bg-red-50 border-red-200"}`}>
                                             <div className={`text-xl font-bold mb-3 ${pop === "ING" ? "text-blue-600" : "text-red-600"}`}>
-                                                {pop} Population
+                                                Population {pop}
                                             </div>
                                             <div className="grid grid-cols-2 gap-4 text-sm">
                                                 <div>
-                                                    <div className="text-slate-500">Completed</div>
+                                                    <div className="text-slate-500">Terminés</div>
                                                     <div className="text-2xl font-bold text-slate-900">{data.completed}</div>
                                                 </div>
                                                 <div>
-                                                    <div className="text-slate-500">Rejected</div>
+                                                    <div className="text-slate-500">Rejetés</div>
                                                     <div className="text-2xl font-bold text-slate-900">{data.rejected}</div>
                                                 </div>
                                                 <div>
-                                                    <div className="text-slate-500">Avg Wait Time</div>
+                                                    <div className="text-slate-500">Attente Moyenne</div>
                                                     <div className="text-2xl font-bold text-slate-900">{popAvgWait.toFixed(2)}s</div>
                                                 </div>
                                                 <div>
@@ -173,7 +173,7 @@ const SimulationReport = ({ engine, config, onClose }) => {
                                 })}
                             </div>
                             <div className="mt-4 p-4 bg-slate-50 rounded-lg text-sm text-slate-600">
-                                <strong>Observation:</strong> {getPopulationAnalysis(stats.popStats, config)}
+                                <strong>Observation :</strong> {getPopulationAnalysis(stats.popStats, config)}
                             </div>
                         </section>
                     )}
@@ -181,59 +181,45 @@ const SimulationReport = ({ engine, config, onClose }) => {
                     {/* SAÉ Analysis - Waterfall Questions */}
                     {config.scenario === "Waterfall" && (
                         <section>
-                            <h3 className="text-lg font-semibold text-slate-800 mb-4">📋 SAÉ Analysis - Waterfall Model</h3>
+                            <h3 className="text-lg font-semibold text-slate-800 mb-4">Analyse SAÉ - Modèle Waterfall</h3>
                             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-4">
                                 {/* Q1: System Model */}
                                 <AnalysisItem
                                     question="1. Système d'attente proposé"
-                                    answer={`Le système modélise un M/M/K avec K=${K} serveurs d'exécution suivi d'un M/M/1 pour le serveur de résultat. Les files FIFO ${config.execQueueCap === Infinity ? 'infinies' : `finies (ks=${config.execQueueCap}, kf=${config.resultQueueCap})`} sont implémentées.`}
+                                    answer={`Le système modélise une architecture en cascade (Waterfall) composée d'un modèle M/M/K pour l'exécution (K=${K} serveurs, arrivées λ=${lambda.toFixed(2)} jobs/s, service μ=${mu.toFixed(2)} jobs/s) suivi d'un modèle M/M/1 pour le traitement des résultats. Les files FIFO peuvent être configurées comme ${config.execQueueCap === Infinity ? 'infinies' : `finies (ks=${config.execQueueCap} pour l'exécution, kf=${config.resultQueueCap} pour les résultats)`}.`}
                                 />
 
                                 {/* Q2: Rejection Analysis */}
-                                {(config.execQueueCap !== Infinity || config.resultQueueCap !== Infinity) && (
-                                    <AnalysisItem
-                                        question="2. Proportions de refus selon les paramètres"
-                                        answer={`
-                                            • Taux de rejet file exec (ks=${config.execQueueCap}): ${execRejectRate.toFixed(2)}% (${stats.rejectedExec} refusés → message d'erreur)
-                                            • Taux de rejet file result (kf=${config.resultQueueCap}): ${resultRejectRate.toFixed(2)}% (${stats.rejectedResult} refusés → pages blanches: ${stats.blankPages})
-                                            • Avec λ=${lambda.toFixed(2)} et ρ=${rho.toFixed(3)}, le système ${rho >= 1 ? 'est saturé (ρ≥1)' : rho > 0.8 ? 'approche la saturation' : 'est stable'}.
-                                            • Recommandation: Augmenter K ou ks si rejet exec > 5%, augmenter kf si pages blanches > 0.
-                                        `}
-                                    />
-                                )}
+                                <AnalysisItem
+                                    question="2. Proportions de refus selon les paramètres"
+                                    answer={`
+                                        • Rejets File Exec (ks=${config.execQueueCap === Infinity ? '∞' : config.execQueueCap}) : ${execRejectRate.toFixed(2)}% (${stats.rejectedExec} rejets). Ces étudiants reçoivent un message d'erreur immédiat.
+                                        • Rejets File Result (kf=${config.resultQueueCap === Infinity ? '∞' : config.resultQueueCap}) : ${resultRejectRate.toFixed(2)}% (${stats.rejectedResult} rejets). Cela génère des 'pages blanches', le pire cas utilisateur car le travail est fait mais le résultat est perdu.
+                                        • État du système : Avec ρ=${rho.toFixed(3)}, le système est ${rho >= 1 ? 'SATURÉ (ρ≥1)' : rho > 0.8 ? 'proche de la saturation' : 'stable'}.
+                                        • Recommandation : Maintenir ρ < 0.8 pour absorber les pics de charge. Si les pages blanches persistent, augmenter kf ou activer le backup.
+                                    `}
+                                />
 
                                 {/* Q3: Backup Analysis */}
-                                {config.backupProb > 0 && (
-                                    <AnalysisItem
-                                        question="3. Analyse du mécanisme de backup"
-                                        answer={`
-                                            • Impact sur pages blanches: ${config.backupProb === 1
-                                                ? `Le backup systématique (100%) élimine TOUTES les pages blanches. Pages blanches observées: ${stats.blankPages}`
-                                                : `Le backup aléatoire (${(config.backupProb * 100).toFixed(0)}%) réduit les pages blanches. Sauvés: ${stats.savedByBackup}, Perdus: ${stats.blankPages}`}
-                                            
-                                            • Problèmes potentiels du backup systématique:
-                                              1. Goulet d'étranglement: si le stockage backup est lent, il crée un délai
-                                              2. Coût de stockage: 100% backup double les besoins en stockage
-                                              3. Cohérence: risque de données obsolètes si le student re-soumet
-                                            
-                                            • Avantages du backup aléatoire (${(config.backupProb * 100).toFixed(0)}%):
-                                              1. Réduction des coûts de stockage proportionnelle
-                                              2. Distribution de charge plus homogène
-                                              3. Compromis acceptable entre fiabilité et performance
-                                              4. Efficacité observée: ${backupEfficiency.toFixed(1)}% des cas critiques sauvés
-                                        `}
-                                    />
-                                )}
+                                <AnalysisItem
+                                    question="3. Analyse du mécanisme de backup"
+                                    answer={`
+                                        • Efficacité : Le backup a sauvé ${stats.savedByBackup} jobs critiques sur ${stats.savedByBackup + stats.blankPages} pertes potentielles (Efficacité : ${backupEfficiency.toFixed(1)}%).
+                                        • Compromis du backup systématique (100%) :
+                                          - Avantage : Élimine totalement les pages blanches.
+                                          - Inconvénients : Double les besoins en stockage, risque de goulot d'étranglement si le stockage est lent, et complexité de récupération.
+                                        • Avantage du backup aléatoire (${(config.backupProb * 100).toFixed(0)}%) : Offre un compromis linéaire entre coût de stockage et fiabilité utilisateur.
+                                    `}
+                                />
 
                                 {/* Q3 continued: Sojourn Time */}
                                 <AnalysisItem
                                     question="Temps de séjour moyen et variance empirique"
                                     answer={`
-                                        • Temps de séjour moyen (W): ${avgWait.toFixed(3)}s
-                                        • Variance empirique: ${variance.toFixed(4)}s²
-                                        • Écart-type (σ): ${stdDev.toFixed(3)}s
-                                        • Loi de Little: L = λ·W = ${lambda.toFixed(2)} × ${avgWait.toFixed(3)} ≈ ${(lambda * avgWait).toFixed(2)} jobs dans le système
-                                        • Formule théorique M/M/K: Wq ≈ ${(1 / (K * mu - lambda)).toFixed(4)}s (si ρ < 1)
+                                        • Temps de séjour moyen (W) : ${avgWait.toFixed(3)}s
+                                        • Variance empirique : ${variance.toFixed(4)}s² (Écart-type σ : ${stdDev.toFixed(3)}s)
+                                        • Validation Loi de Little : L = λ·W ≈ ${(lambda * avgWait).toFixed(2)} jobs en moyenne dans le système.
+                                        • Comparaison théorique : Pour un M/M/K stable, Wq ≈ ${(rho < 1 ? (1 / (K * mu - lambda)).toFixed(4) : '∞')}s (temps d'attente théorique en file).
                                     `}
                                 />
 
@@ -251,73 +237,36 @@ const SimulationReport = ({ engine, config, onClose }) => {
                     {/* SAÉ Analysis - Channels & Dams Questions */}
                     {config.scenario === "Channels" && (
                         <section>
-                            <h3 className="text-lg font-semibold text-slate-800 mb-4">📋 SAÉ Analysis - Channels & Dams Model</h3>
+                            <h3 className="text-lg font-semibold text-slate-800 mb-4">Analyse SAÉ - Modèle Channels & Dams</h3>
                             <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 space-y-4">
                                 {/* Q1: Population Variations */}
                                 <AnalysisItem
                                     question="1. Variations de temps de séjour par population"
                                     answer={`
                                         ${stats.popStats?.ING && stats.popStats?.PREPA ? `
-                                        • ING (arrivées fréquentes, jobs courts):
-                                          - Taux d'arrivée: ${config.ingRate.toFixed(2)} jobs/s
-                                          - Temps d'exécution moyen: ${config.ingExecTime}s
-                                          - Temps de séjour moyen: ${(stats.popStats.ING.totalWaitTime / (stats.popStats.ING.completed || 1) / 1000).toFixed(3)}s
-                                          - Jobs complétés: ${stats.popStats.ING.completed}
-                                        
-                                        • PREPA (arrivées rares, jobs longs):
-                                          - Taux d'arrivée: ${config.prepaRate.toFixed(2)} jobs/s
-                                          - Temps d'exécution moyen: ${config.prepaExecTime}s
-                                          - Temps de séjour moyen: ${(stats.popStats.PREPA.totalWaitTime / (stats.popStats.PREPA.completed || 1) / 1000).toFixed(3)}s
-                                          - Jobs complétés: ${stats.popStats.PREPA.completed}
-                                        
-                                        • Ratio de temps de séjour PREPA/ING: ${((stats.popStats.PREPA.totalWaitTime / (stats.popStats.PREPA.completed || 1)) / (stats.popStats.ING.totalWaitTime / (stats.popStats.ING.completed || 1))).toFixed(2)}x
+                                        • ING (Arrivées fréquentes, jobs courts) : λ=${config.ingRate.toFixed(2)} jobs/s, μ=${(1 / config.ingExecTime).toFixed(2)} jobs/s. Temps de séjour moyen : ${(stats.popStats.ING.totalWaitTime / (stats.popStats.ING.completed || 1) / 1000).toFixed(3)}s.
+                                        • PREPA (Arrivées rares, jobs longs) : λ=${config.prepaRate.toFixed(2)} jobs/s, μ=${(1 / config.prepaExecTime).toFixed(2)} jobs/s. Temps de séjour moyen : ${(stats.popStats.PREPA.totalWaitTime / (stats.popStats.PREPA.completed || 1) / 1000).toFixed(3)}s.
+                                        • Inéquité : Les PREPA attendent ${((stats.popStats.PREPA.totalWaitTime / (stats.popStats.PREPA.completed || 1)) / (stats.popStats.ING.totalWaitTime / (stats.popStats.ING.completed || 1))).toFixed(2)}x plus que les ING en raison de leur temps d'exécution plus long qui monopolise les serveurs.
                                         ` : 'Données de population non disponibles'}
                                     `}
                                 />
 
                                 {/* Q2: Dam Analysis */}
-                                {config.damEnabled && (
-                                    <AnalysisItem
-                                        question="2. Comparaison avec/sans barrage (Dam)"
-                                        answer={`
-                                            • Configuration du barrage:
-                                              - Temps de blocage (tb): ${config.damBlockTime}s
-                                              - Temps d'ouverture: ${config.damOpenTime}s
-                                              - Ratio ouverture/cycle: ${((config.damOpenTime / (config.damBlockTime + config.damOpenTime)) * 100).toFixed(1)}%
-                                            
-                                            • Effet du barrage:
-                                              - Le barrage bloque périodiquement l'accès aux serveurs d'exécution
-                                              - Cela régule le flux des ING (arrivées fréquentes) en accumulant dans la file
-                                              - Les PREPA bénéficient de fenêtres avec moins de compétition
-                                            
-                                            • Impact attendu:
-                                              - Temps d'attente ING ↑ (accumulation pendant blocage)
-                                              - Temps d'attente PREPA ↓ (moins de compétition)
-                                              - Variance globale ↑ (attentes en rafales)
-                                        `}
-                                    />
-                                )}
+                                <AnalysisItem
+                                    question="2. Analyse du mécanisme de Dam (Barrage)"
+                                    answer={`
+                                        • Fonctionnement : Le barrage bloque périodiquement l'accès aux serveurs (tb=${config.damBlockTime}s) pour réguler le flux des ING.
+                                        • Impact : ${config.damEnabled ? `Actif. Il réduit l'inéquité en accumulant les ING dans la file, offrant des fenêtres plus libres aux PREPA. Cependant, il augmente la variance globale et le temps de séjour moyen total.` : `Inactif. Le système fonctionne en flux libre, favorisant l'efficacité globale au détriment de l'équité pour les PREPA.`}
+                                    `}
+                                />
 
                                 {/* Q2 continued: Alternative Scheduling */}
                                 <AnalysisItem
-                                    question="Stratégie alternative pour minimiser le temps de séjour"
+                                    question="3. Stratégies d'ordonnancement et optimalité"
                                     answer={`
-                                        • Stratégie actuelle: ${config.priorityMode}
-                                        
-                                        • Recommandation: Shortest Job First (SJF)
-                                          - Priorise les jobs ING (temps d'exécution ${config.ingExecTime}s < ${config.prepaExecTime}s)
-                                          - Minimise le temps d'attente moyen global
-                                          - Théorème: SJF est optimal pour minimiser le temps moyen
-                                        
-                                        • Alternatives possibles:
-                                          1. SJF: Optimal pour temps moyen, mais défavorise PREPA
-                                          2. Round-Robin par population: équité mais pas optimal
-                                          3. Files séparées: isolation mais sous-utilisation si déséquilibre
-                                          4. PREPA First: favorise jobs longs, réduit variance PREPA
-                                        
-                                        • Trade-off équité vs efficacité:
-                                          - SJF: temps global ↓, mais PREPA pénalisés
-                                          - Dam: équité ↑, mais temps global ↑
+                                        • SJF (Shortest Job First) : ${config.priorityMode === 'SJF' ? 'Actuellement sélectionné.' : 'Optionnelle.'} C'est la stratégie optimale pour minimiser le temps de séjour moyen global (Théorème de Smith). Elle priorise les ING (jobs courts).
+                                        • Compromis Équité vs Efficacité : SJF est le plus efficace mais le moins équitable (risque de famine pour les PREPA). Le Dam ou la priorité PREPA augmentent l'équité mais dégradent le temps moyen global.
+                                        • Recommandation : Utiliser SJF avec un mécanisme de 'timeout' (vieillissement) pour garantir que les PREPA finissent par être servis.
                                     `}
                                 />
 
@@ -334,20 +283,20 @@ const SimulationReport = ({ engine, config, onClose }) => {
 
                     {/* Theoretical Analysis (Common) */}
                     <section>
-                        <h3 className="text-lg font-semibold text-slate-800 mb-4">📚 Modèle Théorique</h3>
+                        <h3 className="text-lg font-semibold text-slate-800 mb-4">Modèle Théorique</h3>
                         <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3 text-sm">
                             <div>
-                                <strong>Système modélisé:</strong> {config.scenario === "Waterfall" ? "M/M/K → M/M/1" : "Multi-classe M/M/K"} avec K={K} serveurs
+                                <strong>Système modélisé :</strong> {config.scenario === "Waterfall" ? "M/M/K → M/M/1" : "Multi-classe M/M/K"} avec K={K} serveurs
                             </div>
                             <div>
-                                <strong>Intensité du trafic (ρ):</strong> λ/(K×μ) = {lambda.toFixed(2)}/({K}×{mu.toFixed(2)}) = <span className={rho >= 1 ? 'text-red-600 font-bold' : rho > 0.8 ? 'text-orange-600 font-bold' : 'text-green-600 font-bold'}>{rho.toFixed(3)}</span>
-                                {rho >= 1 && <span className="text-red-600 ml-2">⚠️ Système saturé!</span>}
+                                <strong>Intensité du trafic (ρ) :</strong> λ/(K×μ) = {lambda.toFixed(2)}/({K}×{mu.toFixed(2)}) = <span className={rho >= 1 ? 'text-red-600 font-bold' : rho > 0.8 ? 'text-orange-600 font-bold' : 'text-green-600 font-bold'}>{rho.toFixed(3)}</span>
+                                {rho >= 1 && <span className="text-red-600 ml-2">⚠️ Système saturé !</span>}
                             </div>
                             <div>
-                                <strong>Stabilité:</strong> {rho < 1 ? `Système stable (ρ=${rho.toFixed(3)} < 1)` : `Système instable (ρ=${rho.toFixed(3)} ≥ 1) - les files croîtront indéfiniment`}
+                                <strong>Stabilité :</strong> {rho < 1 ? `Système stable (ρ=${rho.toFixed(3)} < 1)` : `Système instable (ρ=${rho.toFixed(3)} ≥ 1) - les files croîtront indéfiniment`}
                             </div>
                             <div>
-                                <strong>Loi de Little:</strong> L = λ × W → {(lambda * avgWait).toFixed(2)} = {lambda.toFixed(2)} × {avgWait.toFixed(3)}
+                                <strong>Loi de Little :</strong> L = λ × W → {(lambda * avgWait).toFixed(2)} = {lambda.toFixed(2)} × {avgWait.toFixed(3)}
                             </div>
                         </div>
                     </section>
@@ -604,11 +553,11 @@ function getPopulationAnalysis(popStats, config) {
     const prepaAvg = popStats.PREPA.completed > 0 ? popStats.PREPA.totalWaitTime / popStats.PREPA.completed / 1000 : 0;
 
     if (prepaAvg > ingAvg * 1.5) {
-        return `PREPA students experience ${(prepaAvg / ingAvg).toFixed(1)}x longer wait times than ING students. This is expected due to their longer execution times (${config.prepaExecTime}s vs ${config.ingExecTime}s) which occupy servers longer.`;
+        return `Les étudiants PREPA subissent des temps d'attente ${(prepaAvg / ingAvg).toFixed(1)}x plus longs que les étudiants ING. Ceci est attendu en raison de leurs temps d'exécution plus longs (${config.prepaExecTime}s contre ${config.ingExecTime}s) qui occupent les serveurs plus longtemps.`;
     } else if (ingAvg > prepaAvg * 1.5) {
-        return `ING students surprisingly have longer wait times. This may be due to higher arrival rates overwhelming the system despite shorter job times.`;
+        return `Les étudiants ING ont étonnamment des temps d'attente plus longs. Cela peut être dû à des taux d'arrivée plus élevés submergeant le système malgré des temps de tâches plus courts.`;
     } else {
-        return `Both populations have similar wait times, suggesting a well-balanced system configuration.`;
+        return `Les deux populations ont des temps d'attente similaires, ce qui suggère une configuration système bien équilibrée.`;
     }
 }
 

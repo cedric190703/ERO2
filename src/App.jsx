@@ -118,33 +118,31 @@ function App() {
         <div className="w-80 bg-white border-r border-slate-200 shadow-sm p-6 overflow-y-auto">
           <div className="mb-6">
             <h1 className="text-2xl font-semibold text-slate-900 mb-1">
-              Moulinette Simulation
+              Simulation Moulinette
             </h1>
-            <p className="text-slate-500 text-sm">Queuing System Analysis</p>
+            <p className="text-slate-500 text-sm">Analyse des Systèmes d'Attente</p>
           </div>
 
           {/* Playback Controls */}
           <div className="bg-slate-50 rounded-lg p-4 mb-6 border border-slate-200">
             {finished && (
               <div className="bg-green-100 border border-green-300 text-green-800 px-3 py-2 rounded-lg text-sm font-medium mb-4 text-center">
-                ✓ Simulation terminée
+                Simulation terminée
               </div>
             )}
-            {finished && (
-              <button
-                onClick={() => setShowReport(true)}
-                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-2.5 px-4 rounded-lg font-medium transition-all text-sm mb-4 shadow-md"
-              >
-                📊 View Report
-              </button>
-            )}
+            <button
+              onClick={() => setShowReport(true)}
+              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-2.5 px-4 rounded-lg font-medium transition-all text-sm mb-4 shadow-md"
+            >
+              Voir le Rapport
+            </button>
             <div className="flex gap-2 mb-2">
               <button
                 onClick={handleTogglePause}
                 disabled={finished}
                 className={`flex-1 py-2.5 px-4 rounded-lg font-medium transition-colors text-sm text-white ${finished ? 'bg-slate-400 cursor-not-allowed' : paused ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'}`}
               >
-                {paused ? '▶ Play' : '⏸ Pause'}
+                {paused ? 'Reprendre' : 'Pause'}
               </button>
             </div>
             <div className="flex gap-2 mb-4">
@@ -153,13 +151,13 @@ function App() {
                 disabled={finished}
                 className={`flex-1 py-2.5 px-4 rounded-lg font-medium transition-colors text-sm text-white ${finished ? 'bg-slate-400 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700'}`}
               >
-                ⚡ Simulation Rapide
+                Simulation Rapide
               </button>
               <button
                 onClick={handleReset}
                 className="flex-1 bg-slate-600 hover:bg-slate-700 text-white py-2.5 px-4 rounded-lg font-medium transition-colors text-sm"
               >
-                Reset
+                Réinitialiser
               </button>
             </div>
             <div className="mb-3">
@@ -199,7 +197,7 @@ function App() {
           <div className="grid grid-cols-3 gap-6 mt-6 flex-1">
             <div className="col-span-2 bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
               <div className="bg-slate-50 border-b border-slate-200 px-4 py-3">
-                <h2 className="text-sm font-semibold text-slate-700">System Visualization</h2>
+                <h2 className="text-sm font-semibold text-slate-700">Visualisation du Système</h2>
               </div>
               <div className="p-4">
                 <CanvasView engine={engineRef.current} config={config} />
