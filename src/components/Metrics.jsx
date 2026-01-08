@@ -73,7 +73,8 @@ const Metrics = ({ stats, config }) => {
             )}
 
             {/* Per-Population Stats */}
-            {config.scenario === "Channels" && stats.popStats && (
+            {stats.popStats && Object.keys(stats.popStats).length > 1 && (
+
                 <div className="bg-white rounded-lg p-4 border border-slate-200 shadow-sm">
                     <h3 className="text-slate-700 font-semibold mb-3 text-sm">Indicateurs par Population</h3>
                     <div className="grid grid-cols-2 gap-4">

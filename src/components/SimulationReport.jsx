@@ -21,11 +21,26 @@ const SimulationReport = ({ engine, config, onClose }) => {
 
     // Theoretical analysis based on M/M/K model
     const lambda = config.scenario === "Waterfall" ? config.arrivalRate : (config.ingRate + config.prepaRate);
-    const mu = config.scenario === "Waterfall" ? (1 / config.avgExecTime) :
-        ((config.ingRate * (1 / config.ingExecTime) + config.prepaRate * (1 / config.prepaExecTime)) / (config.ingRate + config.prepaRate));
-    const K = config.numExecServers;
-    const rho = lambda / (K * mu);
+
+    // Exec Stage
+    const muExec = config.scenario === "Waterfall" ? (1 / config.avgExecTime) :
+        (1 / ((config.ingRate * config.ingExecTime + config.prepaRate * config.prepaExecTime) / (config.ingRate + config.prepaRate)));
+    const rhoExec = lambda / (config.numExecServers * muExec);
+
+    // Result Stage (Waterfall only)
+    let rhoResult = 0;
+    if (config.scenario === "Waterfall") {
+        const muResult = 1 / config.avgResultTime;
+        rhoResult = lambda / (config.numResultServers * muResult);
+    }
+
+    // Global Bottleneck
+    const rho = Math.max(rhoExec, rhoResult);
     const systemLoad = Math.min(rho * 100, 100);
+
+    // Aliases for compatibility with existing JSX
+    const K = config.numExecServers;
+    const mu = muExec;
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">

@@ -10,17 +10,26 @@ export class Student {
         this.targetY = 337.5;
         this.completionTime = null;
         this.canBeRemoved = false;
+
+        // Stats tracking (Pure Time vs Travel)
+        this.pureWaitTime = 0;
+        this.pureServiceTime = 0;
+        this.lastQueueEntryTime = 0;
+        this.serviceStartTime = 0;
     }
 
-    updatePosition(speed = 5) {
+    updatePosition(speed = 5, dt = 16.6) {
         const dx = this.targetX - this.x;
         const dy = this.targetY - this.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
 
         if (dist > 2) {
-            // Easing: faster when far, slower when close (smooth deceleration)
+            // Normalize speed by dt (assume dt is in ms, target 60fps => ~16.6ms)
+            const timeFactor = dt / 16.66;
+
+            // Easing
             const easeFactor = Math.min(1, dist / 100);
-            const adjustedSpeed = speed * (0.3 + 0.7 * easeFactor);
+            const adjustedSpeed = speed * (0.3 + 0.7 * easeFactor) * timeFactor;
             this.x += (dx / dist) * adjustedSpeed;
             this.y += (dy / dist) * adjustedSpeed;
         } else {
@@ -223,6 +232,7 @@ export class SimulationEngine {
             if (s.status === "Moving_To_Exec_Queue" && s.hasReachedTarget()) {
                 if (this.config.execQueueCap === Infinity || this.execQueue.length < this.config.execQueueCap) {
                     s.status = "Queued_Exec";
+                    s.lastQueueEntryTime = this.time;
                     this.execQueue.push(s);
                 } else {
                     s.status = "Rejected_Exec";
@@ -237,6 +247,7 @@ export class SimulationEngine {
             if (s.status === "Moving_To_Result_Queue" && s.hasReachedTarget()) {
                 if (this.config.resultQueueCap === Infinity || this.resultQueue.length < this.config.resultQueueCap) {
                     s.status = "Queued_Result";
+                    s.lastQueueEntryTime = this.time;
                     this.resultQueue.push(s);
                 } else {
                     const saved = this.config.backupProb > 0 && Math.random() < this.config.backupProb;
@@ -281,29 +292,59 @@ export class SimulationEngine {
         // D'abord, assigner les students de la queue aux serveurs libres
         this.execServers.forEach((server, idx) => {
             if (server.status === "free" && this.execQueue.length > 0) {
-                if (this.damBlocked) {
-                    return;
-                }
+                let studentIndex = -1;
 
-                let studentIndex = 0;
                 if (this.config.scenario === "Channels" && this.config.priorityMode) {
                     switch (this.config.priorityMode) {
                         case "ING_FIRST":
-                            const ingIdx = this.execQueue.findIndex(s => s.type === "ING");
-                            if (ingIdx !== -1) studentIndex = ingIdx;
+                            const ingIdx = this.execQueue.findIndex(s => s.type === "ING" && (!this.damBlocked));
+                            const anyIdx = this.execQueue.findIndex(s => !this.damBlocked || s.type !== "ING");
+                            // Logic complex. Let's simplify: find first AVAILABLE student.
+                            // Available means: NOT (type==ING AND damBlocked)
                             break;
-                        case "PREPA_FIRST":
-                            const prepaIdx = this.execQueue.findIndex(s => s.type === "PREPA");
-                            if (prepaIdx !== -1) studentIndex = prepaIdx;
-                            break;
-                        case "SJF":
-                            const sjfIdx = this.execQueue.findIndex(s => s.type === "ING");
-                            if (sjfIdx !== -1) studentIndex = sjfIdx;
-                            break;
-                        default:
-                            studentIndex = 0;
                     }
                 }
+
+                // SIMPLIFIED LOGIC for Assignment with DAM
+                // We need to find the first student in the queue (respecting priority) who is NOT blocked.
+
+                // 1. Get all candidates who are NOT blocked by Dam
+                // Blocked condition: damBlocked AND student.type === "ING"
+                const candidates = this.execQueue.map((s, i) => ({ s, i })).filter(item => {
+                    return !(this.damBlocked && item.s.type === "ING");
+                });
+
+                if (candidates.length === 0) return;
+
+                // 2. Apply Priority Selection among candidates
+                let selectedCandidateIndex = 0; // Index within candidates array
+
+                if (this.config.scenario === "Channels" && this.config.priorityMode) {
+                    switch (this.config.priorityMode) {
+                        case "ING_FIRST":
+                            // Find first ING among candidates
+                            const candIng = candidates.findIndex(c => c.s.type === "ING");
+                            if (candIng !== -1) selectedCandidateIndex = candIng;
+                            break;
+                        case "PREPA_FIRST":
+                            const candPrepa = candidates.findIndex(c => c.s.type === "PREPA");
+                            if (candPrepa !== -1) selectedCandidateIndex = candPrepa;
+                            break;
+                        case "SJF":
+                            // Find ING (short) among candidates
+                            const candSjf = candidates.findIndex(c => c.s.type === "ING");
+                            if (candSjf !== -1) selectedCandidateIndex = candSjf;
+                            break;
+                        case "FIFO":
+                        default:
+                            selectedCandidateIndex = 0;
+                            break;
+                    }
+                }
+
+                const studentIndexInQueue = candidates[selectedCandidateIndex].i;
+                studentIndex = studentIndexInQueue;
+
 
                 const student = this.execQueue.splice(studentIndex, 1)[0];
                 server.status = "busy";
@@ -318,6 +359,9 @@ export class SimulationEngine {
 
                 student.targetX = this.layout.execServers[idx].x;
                 student.targetY = this.layout.execServers[idx].y;
+
+                // End waiting (Exec)
+                student.pureWaitTime += Math.max(0, this.time - student.lastQueueEntryTime);
             }
         });
 
@@ -329,6 +373,7 @@ export class SimulationEngine {
                 // Vérifier si le student a atteint le serveur
                 if (student.status === "Moving_To_Exec_Server" && student.hasReachedTarget()) {
                     student.status = "Executing";
+                    student.serviceStartTime = this.time;
                 }
 
                 // CORRECTION: On décrémente le temps UNIQUEMENT si le student a atteint le serveur
@@ -347,6 +392,7 @@ export class SimulationEngine {
 
                         if (this.config.resultQueueCap === Infinity || this.resultQueue.length < this.config.resultQueueCap) {
                             student.status = "Moving_To_Result_Queue";
+                            student.pureServiceTime += (this.time - student.serviceStartTime);
                             student.targetX = this.layout.resultQueue.x;
                             student.targetY = this.layout.resultQueue.y;
                         } else {
@@ -385,6 +431,9 @@ export class SimulationEngine {
 
                 student.targetX = this.layout.resultServers[idx].x;
                 student.targetY = this.layout.resultServers[idx].y;
+
+                // End waiting (Result)
+                student.pureWaitTime += Math.max(0, this.time - student.lastQueueEntryTime);
             }
         });
 
@@ -396,6 +445,7 @@ export class SimulationEngine {
                 // Vérifier si le student a atteint le serveur
                 if (student.status === "Moving_To_Result_Server" && student.hasReachedTarget()) {
                     student.status = "Resulting";
+                    student.serviceStartTime = this.time;
                 }
 
                 // CORRECTION: On décrémente le temps UNIQUEMENT si le student a atteint le serveur
@@ -408,6 +458,7 @@ export class SimulationEngine {
 
                         student.status = "Done";
                         student.completionTime = this.time;
+                        student.pureServiceTime += (this.time - student.serviceStartTime);
                         this.recordCompletion(student);
                         this.setStudentToExit(student, "result");
                     }
@@ -418,7 +469,11 @@ export class SimulationEngine {
 
     recordCompletion(student) {
         this.stats.completed++;
-        const waitTime = student.completionTime - student.arrivalTime;
+
+        const waitTime = (student.pureWaitTime !== undefined && student.pureServiceTime !== undefined && student.pureWaitTime + student.pureServiceTime > 0)
+            ? (student.pureWaitTime + student.pureServiceTime)
+            : (student.completionTime - student.arrivalTime);
+
         this.stats.totalWaitTime += waitTime;
         this.stats.waitTimes.push(waitTime);
 
@@ -430,7 +485,7 @@ export class SimulationEngine {
     updateStudentPositions(dt) {
         const speed = 5 * (this.config.speed || 1);
         this.students.forEach(s => {
-            s.updatePosition(speed);
+            s.updatePosition(speed, dt);
         });
     }
 
@@ -473,7 +528,7 @@ export class SimulationEngine {
 
         const mu = this.config.scenario === "Waterfall"
             ? (1 / this.config.avgExecTime)
-            : ((this.config.ingRate * (1 / this.config.ingExecTime) + this.config.prepaRate * (1 / this.config.prepaExecTime)) / (this.config.ingRate + this.config.prepaRate));
+            : (1 / ((this.config.ingRate * this.config.ingExecTime + this.config.prepaRate * this.config.prepaExecTime) / (this.config.ingRate + this.config.prepaRate)));
 
         // We want rho < 0.8 for safety
         // rho = lambda / (K * mu) < 0.8 => K > lambda / (0.8 * mu)

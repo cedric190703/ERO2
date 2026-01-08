@@ -168,14 +168,14 @@ const Controls = ({ config, setConfig }) => {
                                     label="Temps de Blocage (s)"
                                     value={config.damBlockTime}
                                     min={1}
-                                    max={20}
+                                    max={30}
                                     onChange={(v) => handleChange('damBlockTime', v)}
                                 />
                                 <Slider
                                     label="Temps d'Ouverture (s)"
                                     value={config.damOpenTime}
                                     min={1}
-                                    max={10}
+                                    max={30}
                                     onChange={(v) => handleChange('damOpenTime', v)}
                                 />
                             </>
